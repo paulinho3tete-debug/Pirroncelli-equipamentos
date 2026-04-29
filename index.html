@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIRRONCELLI - Gestão de Estoque</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Bibliotecas para PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: white; margin: 0; overflow-x: hidden; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #111; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #c2ff59; }
+        .logo-glow { filter: drop-shadow(0 0 8px rgba(194, 255, 89, 0.3)); }
+        
+        #pdf-template {
+            color: black;
+            background: white;
+            padding: 40px;
+            width: 800px;
+            position: absolute;
+            left: -9999px;
+        }
+
+        .tab-active { color: #c2ff59; border-bottom: 2px solid #c2ff59; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { jsPDF } = window.jspdf;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAqgLGF-dskUT6v0Esly24ZnkTLXwDcnO8",
+            authDomain: "pirroncelli-2e05f.firebaseapp.com",
+            projectId: "pirroncelli-2e05f",
+            storageBucket: "pirroncelli-2e05f.firebasestorage.app",
+            messagingSenderId: "317866260903",
+            appId: "1:317866260903:web:a94deac8dd795598835e82",
+            measurementId: "G-D4PXQXTS1W"
+        };
+
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const appId = 'pirroncelli-v22';
+
+        const Icons = {
+            Logo: () => (
+                <svg width="180" height="40" viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="logo-glow">
+                    <path d="M10 10L20 30L30 10" stroke="#c2ff59" strokeWidth="4" strokeLinecap="round"/>
+                    <text x="40" y="28" fill="#c2ff59" style={{ font: 'bold 22px Inter', letterSpacing: '-1px' }}>PIRRONCELLI</text>
+                </svg>
+            ),
+            FileText: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ),
+            Trash: () => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            ),
+            Edit: () => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            ),
+            Search: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            ),
+            Clock: () => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ),
+            Calendar: () => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            ),
+            Image: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            ),
+            Info: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            )
+        };
+
+        const App = () => {
+            const [user, setUser] = React.useState(null);
+            const [view, setView] = React.useState('retirada');
+            const [formTab, setFormTab] = React.useState('info');
+            const [products, setProducts] = React.useState([]);
+            const [history, setHistory] = React.useState([]);
+            const [cart, setCart] = React.useState([]);
+            const [search, setSearch] = React.useState('');
+            
+            // Initializing orderData with current date
+            const today = new Date().toISOString().split('T')[0];
+            const [orderData, setOrderData] = React.useState({ 
+                projeto: '', trabalho: '', dataProjeto: today, horaRetirada: '', horaVolta: '', imagemRef: '' 
+            });
+            
+            const [isModalOpen, setIsModalOpen] = React.useState(false);
+            const [editingId, setEditingId] = React.useState(null);
+            const [formData, setFormData] = React.useState({ code: '', name: '', totalQuantity: 1 });
+            
+            const [statusMsg, setStatusMsg] = React.useState({ type: '', text: '' });
+            const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
+
+            React.useEffect(() => {
+                auth.signInAnonymously().catch(e => console.error("Erro Auth:", e));
+                return auth.onAuthStateChanged(u => setUser(u));
+            }, []);
+
+            React.useEffect(() => {
+                if (!user) return;
+                const unsubStock = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory')
+                    .onSnapshot(s => setProducts(s.docs.map(d => ({ ...d.data(), firebaseId: d.id }))));
+                const unsubHistory = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history')
+                    .onSnapshot(s => setHistory(s.docs.map(d => ({ ...d.data(), firebaseId: d.id })).sort((a,b) => b.timestamp - a.timestamp)));
+                return () => { unsubStock(); unsubHistory(); };
+            }, [user]);
+
+            const showMsg = (type, text) => {
+                setStatusMsg({ type, text });
+                setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
+            };
+
+            const handleSaveItem = async () => {
+                if (!formData.name || !formData.code) return showMsg('error', 'Preencha Nome e Código');
+                try {
+                    const payload = {
+                        ...formData,
+                        totalQuantity: parseInt(formData.totalQuantity),
+                        timestamp: Date.now()
+                    };
+
+                    if (editingId) {
+                        const oldItem = products.find(p => p.firebaseId === editingId);
+                        const diff = parseInt(formData.totalQuantity) - oldItem.totalQuantity;
+                        payload.currentQuantity = Math.max(0, oldItem.currentQuantity + diff);
+                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(editingId).update(payload);
+                        showMsg('success', 'Item Atualizado!');
+                    } else {
+                        payload.currentQuantity = parseInt(formData.totalQuantity);
+                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').add(payload);
+                        showMsg('success', 'Item Criado!');
+                    }
+                    setIsModalOpen(false);
+                    setEditingId(null);
+                    setFormData({ code: '', name: '', totalQuantity: 1 });
+                } catch (e) { showMsg('error', 'Erro ao salvar'); }
+            };
+
+            const handleFinalize = async () => {
+                if (!orderData.projeto || !orderData.trabalho || !cart.length) return showMsg('error', 'Preencha os dados e adicione itens');
+                try {
+                    const orderDateFormatted = orderData.dataProjeto.split('-').reverse().join('/');
+                    const order = {
+                        projeto: orderData.projeto.toUpperCase(),
+                        trabalho: orderData.trabalho.toUpperCase(),
+                        dataProjeto: orderDateFormatted,
+                        horaRetirada: orderData.horaRetirada,
+                        horaVolta: orderData.horaVolta,
+                        imagemRef: orderData.imagemRef,
+                        dataRegistro: new Date().toLocaleDateString('pt-BR'),
+                        timestamp: Date.now(),
+                        items: cart.map(i => ({ name: i.name, code: i.code })),
+                        concluido: false
+                    };
+                    
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history').add(order);
+                    
+                    for(const item of cart) {
+                        const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(item.firebaseId);
+                        const currentProd = products.find(p => p.firebaseId === item.firebaseId);
+                        await ref.update({ currentQuantity: Math.max(0, (currentProd.currentQuantity || 0) - 1) });
+                    }
+                    
+                    setCart([]);
+                    setOrderData({ projeto: '', trabalho: '', dataProjeto: today, horaRetirada: '', horaVolta: '', imagemRef: '' });
+                    setFormTab('info');
+                    showMsg('success', 'Ordem Registrada!');
+                    setView('historico');
+                } catch (e) { showMsg('error', 'Erro no processamento'); }
+            };
+
+            const handleDeleteOrder = async (id) => {
+                if(!confirm('Tem certeza que deseja EXCLUIR permanentemente este projeto do histórico?')) return;
+                try {
+                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history').doc(id).delete();
+                    showMsg('success', 'Projeto excluído com sucesso');
+                } catch (e) { showMsg('error', 'Erro ao excluir projeto'); }
+            };
+
+            const generatePDF = async (order) => {
+                setIsGeneratingPdf(true);
+                document.getElementById('pdf-title').innerText = order.projeto;
+                document.getElementById('pdf-job').innerText = order.trabalho;
+                document.getElementById('pdf-times').innerText = `${order.horaRetirada} às ${order.horaVolta}`;
+                document.getElementById('pdf-date').innerText = order.dataProjeto || order.dataRegistro;
+                
+                const list = document.getElementById('pdf-items');
+                list.innerHTML = order.items.map(it => `<li style="padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; font-family: sans-serif;"><b>•</b> ${it.name} <span style="color: #666; font-size: 12px;">[${it.code}]</span></li>`).join('');
+
+                const imgContainer = document.getElementById('pdf-image');
+                if (order.imagemRef) {
+                    imgContainer.innerHTML = `<div style="margin-top: 30px;"><p style="font-size: 12px; font-weight: bold; margin-bottom: 10px;">REFERÊNCIA VISUAL:</p><img src="${order.imagemRef}" style="max-width: 100%; border-radius: 8px; border: 1px solid #ddd;"/></div>`;
+                } else { imgContainer.innerHTML = ''; }
+
+                setTimeout(async () => {
+                    const canvas = await html2canvas(document.getElementById('pdf-template'), { scale: 2, useCORS: true });
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+                    pdf.save(`PIRRONCELLI_${order.projeto.replace(/\s/g, '_')}.pdf`);
+                    setIsGeneratingPdf(false);
+                }, 600);
+            };
+
+            const getCartCount = (id) => cart.filter(i => i.firebaseId === id).length;
+
+            if (!user) return <div className="h-screen bg-black flex items-center justify-center text-[#c2ff59] font-black uppercase tracking-widest animate-pulse">Iniciando Pirroncelli...</div>;
+
+            return (
+                <div className="min-h-screen pb-20">
+                    <div id="pdf-template">
+                        <div style={{ borderBottom: '5px solid black', paddingBottom: '15px', marginBottom: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                            <div>
+                                <h1 style={{ fontSize: '38px', margin: 0, fontWeight: '900', letterSpacing: '-2px' }}>PIRRONCELLI</h1>
+                                <p style={{ margin: 0, fontSize: '12px', letterSpacing: '2px', fontWeight: 'bold' }}>GESTAO DE EQUIPAMENTOS</p>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <p id="pdf-date" style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}></p>
+                            </div>
+                        </div>
+                        <div style={{ marginBottom: '30px', backgroundColor: '#f9f9f9', padding: '20px', borderRadius: '10px' }}>
+                            <h2 id="pdf-title" style={{ fontSize: '26px', margin: '0 0 5px 0', textTransform: 'uppercase' }}>PROJETO</h2>
+                            <p id="pdf-job" style={{ margin: 0, fontSize: '16px', color: '#444' }}>TRABALHO</p>
+                            <p style={{ margin: '15px 0 0 0', fontSize: '14px' }}><b>PERÍODO:</b> <span id="pdf-times"></span></p>
+                        </div>
+                        <h3 style={{ borderBottom: '2px solid black', paddingBottom: '8px', fontSize: '16px', marginBottom: '15px' }}>LISTA DE SAÍDA</h3>
+                        <ul id="pdf-items" style={{ listStyle: 'none', padding: 0 }}></ul>
+                        <div id="pdf-image"></div>
+                    </div>
+
+                    <header className="p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-b border-white/5 sticky top-0 bg-black/90 backdrop-blur-xl z-50">
+                        <Icons.Logo />
+                        <div className="flex bg-zinc-900 p-1.5 rounded-2xl border border-white/5">
+                            {['retirada', 'historico', 'estoque'].map(t => (
+                                <button key={t} onClick={() => setView(t)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${view === t ? 'bg-[#c2ff59] text-black shadow-lg shadow-[#c2ff59]/20' : 'opacity-40 hover:opacity-100 hover:bg-white/5'}`}>
+                                    {t === 'retirada' ? 'Nova OD' : t === 'historico' ? 'Projetos' : 'Estoque'}
+                                </button>
+                            ))}
+                        </div>
+                    </header>
+
+                    <main className="p-6 max-w-7xl mx-auto">
+                        {view === 'retirada' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                <div className="space-y-6">
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20 group-focus-within:opacity-100 transition-opacity"><Icons.Search /></div>
+                                        <input type="text" placeholder="BUSCAR NA LISTA..." className="w-full bg-zinc-900/50 border border-white/10 rounded-2xl p-5 pl-12 text-xs font-bold uppercase outline-none focus:border-[#c2ff59] transition-all" value={search} onChange={e => setSearch(e.target.value)} />
+                                    </div>
+                                    <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-3 custom-scrollbar">
+                                        {products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => {
+                                            const available = p.currentQuantity - getCartCount(p.firebaseId);
+                                            return (
+                                                <button key={p.firebaseId} disabled={available <= 0} onClick={() => setCart([...cart, p])} className={`w-full p-5 rounded-2xl bg-zinc-900/40 border border-white/5 flex items-center justify-between transition-all group ${available <= 0 ? 'opacity-20 cursor-not-allowed' : 'hover:bg-zinc-900 hover:border-[#c2ff59]/30'}`}>
+                                                    <div className="text-left">
+                                                        <div className="text-[11px] font-black uppercase tracking-tight">{p.name}</div>
+                                                        <div className="text-[9px] opacity-30 font-bold mt-0.5">{p.code}</div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className={`font-black text-xs ${available <= 0 ? 'text-red-500' : 'text-[#c2ff59]'}`}>{available}</div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                <div className="bg-zinc-900/40 border border-white/5 rounded-[3rem] p-1 h-fit shadow-2xl">
+                                    <div className="flex border-b border-white/5 px-8 pt-6">
+                                        <button onClick={() => setFormTab('info')} className={`pb-4 px-4 text-[10px] font-black uppercase flex items-center gap-2 transition-all ${formTab === 'info' ? 'tab-active' : 'opacity-30'}`}>
+                                            <Icons.Info /> Detalhes do Projeto
+                                        </button>
+                                        <button onClick={() => setFormTab('media')} className={`pb-4 px-4 text-[10px] font-black uppercase flex items-center gap-2 transition-all ${formTab === 'media' ? 'tab-active' : 'opacity-30'}`}>
+                                            <Icons.Image /> Mídia
+                                        </button>
+                                    </div>
+
+                                    <div className="p-8 space-y-6">
+                                        {formTab === 'info' ? (
+                                            <div className="space-y-4">
+                                                <input placeholder="NOME DO CLIENTE / PROJETO" className="w-full bg-black/50 border border-white/10 p-5 rounded-2xl text-[11px] font-bold uppercase outline-none focus:border-[#c2ff59]/50" value={orderData.projeto} onChange={e => setOrderData({...orderData, projeto: e.target.value})} />
+                                                <input placeholder="FINALIDADE (EX: COBERTURA, FILMAGEM)" className="w-full bg-black/50 border border-white/10 p-5 rounded-2xl text-[11px] font-bold uppercase outline-none focus:border-[#c2ff59]/50" value={orderData.trabalho} onChange={e => setOrderData({...orderData, trabalho: e.target.value})} />
+                                                
+                                                <div className="space-y-1.5">
+                                                    <label className="text-[9px] font-black opacity-20 ml-3 uppercase flex items-center gap-1"><Icons.Calendar /> Data do Projeto (Dia/Mês/Ano)</label>
+                                                    <input type="date" className="w-full bg-black/50 border border-white/10 p-5 rounded-2xl text-[11px] font-bold outline-none" value={orderData.dataProjeto} onChange={e => setOrderData({...orderData, dataProjeto: e.target.value})} />
+                                                </div>
+
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[9px] font-black opacity-20 ml-3 uppercase flex items-center gap-1"><Icons.Clock /> Retirada</label>
+                                                        <input type="time" className="w-full bg-black/50 border border-white/10 p-5 rounded-2xl text-[11px] font-bold outline-none" value={orderData.horaRetirada} onChange={e => setOrderData({...orderData, horaRetirada: e.target.value})} />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <label className="text-[9px] font-black opacity-20 ml-3 uppercase flex items-center gap-1"><Icons.Clock /> Devolução</label>
+                                                        <input type="time" className="w-full bg-black/50 border border-white/10 p-5 rounded-2xl text-[11px] font-bold outline-none" value={orderData.horaVolta} onChange={e => setOrderData({...orderData, horaVolta: e.target.value})} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <input placeholder="COLE O LINK DA IMAGEM (URL)" className="w-full bg-black/50 border border-white/10 p-5 rounded-2xl text-[10px] font-bold outline-none focus:border-[#c2ff59]" value={orderData.imagemRef} onChange={e => setOrderData({...orderData, imagemRef: e.target.value})} />
+                                                {orderData.imagemRef && (
+                                                    <div className="w-full h-40 rounded-2xl overflow-hidden border border-white/10 bg-black">
+                                                        <img src={orderData.imagemRef} className="w-full h-full object-contain" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="pt-4 border-t border-white/5">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <span className="text-[10px] font-black opacity-40 uppercase">Itens Selecionados ({cart.length})</span>
+                                            </div>
+                                            <div className="bg-black/40 rounded-2xl p-4 min-h-[100px] border border-white/5 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                                {cart.map((c, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0 uppercase text-[9px] font-black">
+                                                        <span>{c.name}</span>
+                                                        <button onClick={() => setCart(cart.filter((_, i) => i !== idx))} className="text-red-500 opacity-40 hover:opacity-100 transition-opacity"><Icons.Trash /></button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <button onClick={handleFinalize} disabled={!cart.length || !orderData.projeto} className="w-full bg-[#c2ff59] text-black py-5 rounded-2xl font-black uppercase text-xs disabled:opacity-20 transition-all hover:scale-[1.02]">
+                                            Finalizar e Salvar Projeto
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'historico' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                {history.map(h => (
+                                    <div key={h.firebaseId} className="group p-8 rounded-[3rem] border bg-zinc-900/60 border-[#c2ff59]/10 hover:border-[#c2ff59]/30 transition-all flex flex-col relative overflow-hidden">
+                                        <div className="flex justify-between items-start mb-6">
+                                            <div>
+                                                <h3 className="font-black uppercase text-base text-[#c2ff59] tracking-tight">{h.projeto}</h3>
+                                                <p className="text-[9px] font-bold opacity-40 mt-1 uppercase tracking-wider">{h.trabalho}</p>
+                                            </div>
+                                            <button onClick={() => handleDeleteOrder(h.firebaseId)} className="p-2.5 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500 hover:text-white">
+                                                <Icons.Trash />
+                                            </button>
+                                        </div>
+
+                                        <div className="flex items-center gap-4 mb-6">
+                                            <div className="flex items-center gap-2 opacity-50 text-[10px] font-black bg-white/5 px-3 py-1.5 rounded-full uppercase">
+                                                <Icons.Calendar /> {h.dataProjeto || h.dataRegistro}
+                                            </div>
+                                            <div className="flex items-center gap-2 opacity-50 text-[10px] font-black bg-white/5 px-3 py-1.5 rounded-full uppercase">
+                                                <Icons.Clock /> {h.horaRetirada} - {h.horaVolta}
+                                            </div>
+                                        </div>
+
+                                        {h.imagemRef && (
+                                            <div className="w-full h-40 rounded-3xl overflow-hidden mb-6 border border-white/5 bg-black/50">
+                                                <img src={h.imagemRef} className="w-full h-full object-cover opacity-80" />
+                                            </div>
+                                        )}
+
+                                        <div className="text-[10px] space-y-1 mb-8 bg-black/40 p-4 rounded-2xl border border-white/5 max-h-32 overflow-y-auto custom-scrollbar uppercase font-bold opacity-60">
+                                            {h.items?.map((it, i) => <div key={i}>• {it.name}</div>)}
+                                        </div>
+
+                                        <div className="mt-auto space-y-3">
+                                            <button onClick={() => generatePDF(h)} className="w-full bg-white/5 hover:bg-white/10 text-white text-[10px] font-black uppercase p-4 rounded-2xl flex items-center justify-center gap-3 transition-all border border-white/10">
+                                                <Icons.FileText /> Baixar PDF
+                                            </button>
+                                            {!h.concluido && (
+                                                <button 
+                                                    onClick={async () => {
+                                                        if(!confirm('Confirmar devolução?')) return;
+                                                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history').doc(h.firebaseId).update({ concluido: true });
+                                                        for(const item of h.items) {
+                                                            const prod = products.find(p => p.code === item.code);
+                                                            if(prod) {
+                                                                const ref = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(prod.firebaseId);
+                                                                await ref.update({ currentQuantity: prod.currentQuantity + 1 });
+                                                            }
+                                                        }
+                                                        showMsg('success', 'Baixa realizada!');
+                                                    }}
+                                                    className="w-full bg-[#c2ff59] text-black text-[10px] font-black uppercase p-4 rounded-2xl"
+                                                >
+                                                    Dar Baixa
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {view === 'estoque' && (
+                            <div className="space-y-8">
+                                <div className="flex justify-between items-center bg-zinc-900/30 p-8 rounded-[3rem] border border-white/5">
+                                    <h2 className="text-3xl font-black uppercase tracking-tighter">Estoque</h2>
+                                    <button onClick={() => { setEditingId(null); setFormData({code:'', name:'', totalQuantity:1}); setIsModalOpen(true); }} className="bg-[#c2ff59] text-black px-8 py-4 rounded-2xl font-black text-[11px] uppercase">Adicionar Item</button>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
+                                    {products.map(p => (
+                                        <div key={p.firebaseId} className="bg-zinc-900/40 p-6 rounded-[2.5rem] border border-white/5 flex flex-col justify-between group hover:border-[#c2ff59]/30 transition-all">
+                                            <div className="text-[11px] font-black uppercase leading-tight mb-4">{p.name}</div>
+                                            <div className="flex justify-between items-end">
+                                                <div className="font-black text-sm text-[#c2ff59]">{p.currentQuantity} <span className="opacity-20 text-[9px]">/ {p.totalQuantity}</span></div>
+                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => { setEditingId(p.firebaseId); setFormData({name:p.name, code:p.code, totalQuantity:p.totalQuantity}); setIsModalOpen(true); }} className="p-2 bg-white/5 rounded-lg hover:text-[#c2ff59]"><Icons.Edit /></button>
+                                                    <button onClick={async () => { if(confirm('Apagar item?')) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(p.firebaseId).delete() }} className="p-2 bg-white/5 rounded-lg hover:text-red-500"><Icons.Trash /></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {statusMsg.text && (
+                        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl border text-[10px] font-black uppercase bg-zinc-900 border-[#c2ff59] text-[#c2ff59] animate-bounce">
+                            {statusMsg.text}
+                        </div>
+                    )}
+
+                    {isModalOpen && (
+                        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-6 backdrop-blur-md">
+                            <div className="bg-zinc-900 border border-white/10 p-10 rounded-[3.5rem] w-full max-w-md space-y-6">
+                                <h2 className="text-2xl font-black uppercase text-[#c2ff59]">{editingId ? 'Editar' : 'Novo Item'}</h2>
+                                <div className="space-y-4">
+                                    <input placeholder="NOME" className="w-full bg-black border border-white/10 p-5 rounded-2xl text-[11px] font-bold uppercase outline-none" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} />
+                                    <input placeholder="PATRIMÔNIO" className="w-full bg-black border border-white/10 p-5 rounded-2xl text-[11px] font-bold uppercase outline-none" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} />
+                                    <input type="number" className="w-full bg-black border border-white/10 p-5 rounded-2xl text-[11px] font-bold outline-none" value={formData.totalQuantity} onChange={e => setFormData({...formData, totalQuantity: e.target.value})} />
+                                </div>
+                                <div className="flex gap-3">
+                                    <button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-zinc-800 rounded-2xl font-black text-[10px] uppercase">Cancelar</button>
+                                    <button onClick={handleSaveItem} className="flex-1 py-4 bg-[#c2ff59] text-black rounded-2xl font-black text-[10px] uppercase">Salvar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
