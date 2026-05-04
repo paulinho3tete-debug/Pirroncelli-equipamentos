@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PIRRONCELLI - Gestão de Estoque</title>
+    
+    <link rel="icon" type="image/png" href="favicon.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- Bibliotecas para PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -90,6 +91,15 @@
             ),
             Info: () => (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            ),
+            Package: () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            ),
+            Plus: () => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            ),
+            Upload: () => (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             )
         };
 
@@ -97,12 +107,14 @@
             const [user, setUser] = React.useState(null);
             const [view, setView] = React.useState('retirada');
             const [formTab, setFormTab] = React.useState('info');
+            const [listMode, setListMode] = React.useState('items');
+            
             const [products, setProducts] = React.useState([]);
             const [history, setHistory] = React.useState([]);
+            const [kits, setKits] = React.useState([]);
             const [cart, setCart] = React.useState([]);
             const [search, setSearch] = React.useState('');
             
-            // Initializing orderData with current date
             const today = new Date().toISOString().split('T')[0];
             const [orderData, setOrderData] = React.useState({ 
                 projeto: '', trabalho: '', dataProjeto: today, horaRetirada: '', horaVolta: '', imagemRef: '' 
@@ -112,6 +124,11 @@
             const [editingId, setEditingId] = React.useState(null);
             const [formData, setFormData] = React.useState({ code: '', name: '', totalQuantity: 1 });
             
+            const [isKitModalOpen, setIsKitModalOpen] = React.useState(false);
+            const [editingKitId, setEditingKitId] = React.useState(null);
+            const [kitFormData, setKitFormData] = React.useState({ name: '', items: [] });
+            const [kitSearch, setKitSearch] = React.useState('');
+
             const [statusMsg, setStatusMsg] = React.useState({ type: '', text: '' });
             const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
 
@@ -126,12 +143,88 @@
                     .onSnapshot(s => setProducts(s.docs.map(d => ({ ...d.data(), firebaseId: d.id }))));
                 const unsubHistory = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history')
                     .onSnapshot(s => setHistory(s.docs.map(d => ({ ...d.data(), firebaseId: d.id })).sort((a,b) => b.timestamp - a.timestamp)));
-                return () => { unsubStock(); unsubHistory(); };
+                const unsubKits = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('kits')
+                    .onSnapshot(s => setKits(s.docs.map(d => ({ ...d.data(), firebaseId: d.id }))));
+                
+                return () => { unsubStock(); unsubHistory(); unsubKits(); };
             }, [user]);
 
             const showMsg = (type, text) => {
                 setStatusMsg({ type, text });
                 setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
+            };
+
+            // Função Mágica para Importar o CSV
+            const handleCSVUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                setStatusMsg({ type: 'info', text: 'Lendo planilha...' });
+                
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    const text = event.target.result;
+                    const rows = text.split('\n');
+                    
+                    const firstRow = rows[0] || '';
+                    const delimiter = firstRow.includes(';') ? ';' : ',';
+
+                    const batch = db.batch();
+                    let addedCount = 0;
+
+                    for (let i = 1; i < rows.length; i++) {
+                        const row = rows[i].trim();
+                        if (!row) continue;
+                        
+                        // Divide as colunas de forma segura
+                        const regex = new RegExp(`${delimiter}(?=(?:(?:[^"]*"){2})*[^"]*$)`);
+                        const cols = row.split(regex);
+                        
+                        const codigo = (cols[0] || '').replace(/"/g, '').trim();
+                        const nome = (cols[1] || '').replace(/"/g, '').trim();
+                        const marca = (cols[2] || '').replace(/"/g, '').trim();
+                        const modelo = (cols[3] || '').replace(/"/g, '').trim();
+                        
+                        // Verifica se é uma linha válida de equipamento (começa com PIR)
+                        if (codigo && nome && codigo.startsWith('PIR')) {
+                            
+                            // Junta Nome + Marca + Modelo para ficar completo
+                            let nomeFinal = nome;
+                            if (marca && marca !== 'NÃO ESPECIFICADO' && marca !== '') {
+                                nomeFinal += ` - ${marca}`;
+                            }
+                            if (modelo && modelo !== 'NÃO ESPECIFICADO' && modelo !== '') {
+                                nomeFinal += ` (${modelo})`;
+                            }
+
+                            const docRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc();
+                            batch.set(docRef, {
+                                code: codigo,
+                                name: nomeFinal,
+                                totalQuantity: 1, // Quantidade base
+                                currentQuantity: 1,
+                                timestamp: Date.now()
+                            });
+                            addedCount++;
+                        }
+                    }
+                    
+                    if (addedCount > 0) {
+                        try {
+                            await batch.commit();
+                            showMsg('success', `${addedCount} itens importados com sucesso!`);
+                        } catch(err) {
+                            showMsg('error', 'Erro ao salvar no banco de dados.');
+                            console.error(err);
+                        }
+                    } else {
+                        showMsg('error', 'Nenhum item com código "PIR-" encontrado.');
+                    }
+                    
+                    // Limpa o input file
+                    e.target.value = null;
+                };
+                reader.readAsText(file, 'UTF-8');
             };
 
             const handleSaveItem = async () => {
@@ -158,6 +251,56 @@
                     setEditingId(null);
                     setFormData({ code: '', name: '', totalQuantity: 1 });
                 } catch (e) { showMsg('error', 'Erro ao salvar'); }
+            };
+
+            const handleSaveKit = async () => {
+                if (!kitFormData.name || kitFormData.items.length === 0) return showMsg('error', 'Dê um nome e adicione itens ao kit');
+                try {
+                    const payload = {
+                        name: kitFormData.name.toUpperCase(),
+                        items: kitFormData.items,
+                        timestamp: Date.now()
+                    };
+
+                    if (editingKitId) {
+                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('kits').doc(editingKitId).update(payload);
+                        showMsg('success', 'Kit Atualizado!');
+                    } else {
+                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('kits').add(payload);
+                        showMsg('success', 'Kit Criado!');
+                    }
+                    setIsKitModalOpen(false);
+                    setEditingKitId(null);
+                    setKitFormData({ name: '', items: [] });
+                } catch (e) { showMsg('error', 'Erro ao salvar kit'); }
+            };
+
+            const addKitToCart = (kit) => {
+                let itemsAdded = 0;
+                let itemsMissed = 0;
+                let newCart = [...cart];
+
+                kit.items.forEach(kitItem => {
+                    const prod = products.find(p => p.firebaseId === kitItem.firebaseId);
+                    if (prod) {
+                        const inCart = newCart.filter(c => c.firebaseId === prod.firebaseId).length;
+                        if (prod.currentQuantity - inCart > 0) {
+                            newCart.push(prod);
+                            itemsAdded++;
+                        } else {
+                            itemsMissed++;
+                        }
+                    } else {
+                        itemsMissed++;
+                    }
+                });
+
+                setCart(newCart);
+                if (itemsMissed > 0) {
+                    showMsg('error', `Kit parcial: ${itemsMissed} item(s) sem estoque!`);
+                } else if (itemsAdded > 0) {
+                    showMsg('success', `Kit ${kit.name} adicionado!`);
+                }
             };
 
             const handleFinalize = async () => {
@@ -194,11 +337,11 @@
             };
 
             const handleDeleteOrder = async (id) => {
-                if(!confirm('Tem certeza que deseja EXCLUIR permanentemente este projeto do histórico?')) return;
+                if(!confirm('Excluir permanentemente este projeto do histórico?')) return;
                 try {
                     await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history').doc(id).delete();
-                    showMsg('success', 'Projeto excluído com sucesso');
-                } catch (e) { showMsg('error', 'Erro ao excluir projeto'); }
+                    showMsg('success', 'Projeto excluído');
+                } catch (e) { showMsg('error', 'Erro ao excluir'); }
             };
 
             const generatePDF = async (order) => {
@@ -256,10 +399,10 @@
 
                     <header className="p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-b border-white/5 sticky top-0 bg-black/90 backdrop-blur-xl z-50">
                         <Icons.Logo />
-                        <div className="flex bg-zinc-900 p-1.5 rounded-2xl border border-white/5">
-                            {['retirada', 'historico', 'estoque'].map(t => (
-                                <button key={t} onClick={() => setView(t)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${view === t ? 'bg-[#c2ff59] text-black shadow-lg shadow-[#c2ff59]/20' : 'opacity-40 hover:opacity-100 hover:bg-white/5'}`}>
-                                    {t === 'retirada' ? 'Nova OD' : t === 'historico' ? 'Projetos' : 'Estoque'}
+                        <div className="flex bg-zinc-900 p-1.5 rounded-2xl border border-white/5 overflow-x-auto">
+                            {['retirada', 'historico', 'kits', 'estoque'].map(t => (
+                                <button key={t} onClick={() => setView(t)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all whitespace-nowrap ${view === t ? 'bg-[#c2ff59] text-black shadow-lg shadow-[#c2ff59]/20' : 'opacity-40 hover:opacity-100 hover:bg-white/5'}`}>
+                                    {t === 'retirada' ? 'Nova OD' : t === 'historico' ? 'Projetos' : t === 'kits' ? 'Kits' : 'Estoque'}
                                 </button>
                             ))}
                         </div>
@@ -269,32 +412,53 @@
                         {view === 'retirada' && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                                 <div className="space-y-6">
+                                    <div className="flex bg-zinc-900 p-1 rounded-2xl w-fit border border-white/5">
+                                        <button onClick={() => setListMode('items')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${listMode === 'items' ? 'bg-[#c2ff59]/20 text-[#c2ff59]' : 'opacity-40 hover:opacity-100'}`}>Itens</button>
+                                        <button onClick={() => setListMode('kits')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${listMode === 'kits' ? 'bg-[#c2ff59]/20 text-[#c2ff59]' : 'opacity-40 hover:opacity-100'}`}>Kits Montados</button>
+                                    </div>
+
                                     <div className="relative group">
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20 group-focus-within:opacity-100 transition-opacity"><Icons.Search /></div>
-                                        <input type="text" placeholder="BUSCAR NA LISTA..." className="w-full bg-zinc-900/50 border border-white/10 rounded-2xl p-5 pl-12 text-xs font-bold uppercase outline-none focus:border-[#c2ff59] transition-all" value={search} onChange={e => setSearch(e.target.value)} />
+                                        <input type="text" placeholder={listMode === 'items' ? "BUSCAR EQUIPAMENTO..." : "BUSCAR KIT..."} className="w-full bg-zinc-900/50 border border-white/10 rounded-2xl p-5 pl-12 text-xs font-bold uppercase outline-none focus:border-[#c2ff59] transition-all" value={search} onChange={e => setSearch(e.target.value)} />
                                     </div>
-                                    <div className="space-y-3 max-h-[65vh] overflow-y-auto pr-3 custom-scrollbar">
-                                        {products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => {
-                                            const available = p.currentQuantity - getCartCount(p.firebaseId);
-                                            return (
-                                                <button key={p.firebaseId} disabled={available <= 0} onClick={() => setCart([...cart, p])} className={`w-full p-5 rounded-2xl bg-zinc-900/40 border border-white/5 flex items-center justify-between transition-all group ${available <= 0 ? 'opacity-20 cursor-not-allowed' : 'hover:bg-zinc-900 hover:border-[#c2ff59]/30'}`}>
-                                                    <div className="text-left">
-                                                        <div className="text-[11px] font-black uppercase tracking-tight">{p.name}</div>
-                                                        <div className="text-[9px] opacity-30 font-bold mt-0.5">{p.code}</div>
+                                    
+                                    <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-3 custom-scrollbar">
+                                        {listMode === 'items' ? (
+                                            products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => {
+                                                const available = p.currentQuantity - getCartCount(p.firebaseId);
+                                                return (
+                                                    <button key={p.firebaseId} disabled={available <= 0} onClick={() => setCart([...cart, p])} className={`w-full p-5 rounded-2xl bg-zinc-900/40 border border-white/5 flex items-center justify-between transition-all group ${available <= 0 ? 'opacity-20 cursor-not-allowed' : 'hover:bg-zinc-900 hover:border-[#c2ff59]/30'}`}>
+                                                        <div className="text-left">
+                                                            <div className="text-[11px] font-black uppercase tracking-tight">{p.name}</div>
+                                                            <div className="text-[9px] opacity-30 font-bold mt-0.5">{p.code}</div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className={`font-black text-xs ${available <= 0 ? 'text-red-500' : 'text-[#c2ff59]'}`}>{available}</div>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })
+                                        ) : (
+                                            kits.filter(k => k.name.toLowerCase().includes(search.toLowerCase())).map(k => (
+                                                <div key={k.firebaseId} className="w-full p-5 rounded-2xl bg-zinc-900/40 border border-[#c2ff59]/10 transition-all flex flex-col gap-3">
+                                                    <div className="flex justify-between items-center">
+                                                        <div className="text-[11px] font-black uppercase text-[#c2ff59] flex items-center gap-2"><Icons.Package /> {k.name}</div>
+                                                        <button onClick={() => addKitToCart(k)} className="bg-[#c2ff59] text-black px-4 py-2 rounded-xl text-[9px] font-black uppercase hover:scale-105 transition-all">Adicionar Kit Inteiro</button>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <div className={`font-black text-xs ${available <= 0 ? 'text-red-500' : 'text-[#c2ff59]'}`}>{available}</div>
+                                                    <div className="text-[9px] opacity-40 font-bold uppercase flex flex-wrap gap-2">
+                                                        {k.items.map((it, idx) => <span key={idx} className="bg-black/50 px-2 py-1 rounded">{it.name}</span>)}
                                                     </div>
-                                                </button>
-                                            );
-                                        })}
+                                                </div>
+                                            ))
+                                        )}
+                                        {listMode === 'kits' && kits.length === 0 && <div className="text-[10px] text-center opacity-30 font-black uppercase mt-10">Nenhum kit cadastrado. Vá na aba "Kits" para criar.</div>}
                                     </div>
                                 </div>
 
                                 <div className="bg-zinc-900/40 border border-white/5 rounded-[3rem] p-1 h-fit shadow-2xl">
                                     <div className="flex border-b border-white/5 px-8 pt-6">
                                         <button onClick={() => setFormTab('info')} className={`pb-4 px-4 text-[10px] font-black uppercase flex items-center gap-2 transition-all ${formTab === 'info' ? 'tab-active' : 'opacity-30'}`}>
-                                            <Icons.Info /> Detalhes do Projeto
+                                            <Icons.Info /> Detalhes
                                         </button>
                                         <button onClick={() => setFormTab('media')} className={`pb-4 px-4 text-[10px] font-black uppercase flex items-center gap-2 transition-all ${formTab === 'media' ? 'tab-active' : 'opacity-30'}`}>
                                             <Icons.Image /> Mídia
@@ -308,7 +472,7 @@
                                                 <input placeholder="FINALIDADE (EX: COBERTURA, FILMAGEM)" className="w-full bg-black/50 border border-white/10 p-5 rounded-2xl text-[11px] font-bold uppercase outline-none focus:border-[#c2ff59]/50" value={orderData.trabalho} onChange={e => setOrderData({...orderData, trabalho: e.target.value})} />
                                                 
                                                 <div className="space-y-1.5">
-                                                    <label className="text-[9px] font-black opacity-20 ml-3 uppercase flex items-center gap-1"><Icons.Calendar /> Data do Projeto (Dia/Mês/Ano)</label>
+                                                    <label className="text-[9px] font-black opacity-20 ml-3 uppercase flex items-center gap-1"><Icons.Calendar /> Data do Projeto</label>
                                                     <input type="date" className="w-full bg-black/50 border border-white/10 p-5 rounded-2xl text-[11px] font-bold outline-none" value={orderData.dataProjeto} onChange={e => setOrderData({...orderData, dataProjeto: e.target.value})} />
                                                 </div>
 
@@ -336,7 +500,7 @@
 
                                         <div className="pt-4 border-t border-white/5">
                                             <div className="flex justify-between items-center mb-4">
-                                                <span className="text-[10px] font-black opacity-40 uppercase">Itens Selecionados ({cart.length})</span>
+                                                <span className="text-[10px] font-black opacity-40 uppercase">Itens na Lista ({cart.length})</span>
                                             </div>
                                             <div className="bg-black/40 rounded-2xl p-4 min-h-[100px] border border-white/5 space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
                                                 {cart.map((c, idx) => (
@@ -349,9 +513,38 @@
                                         </div>
 
                                         <button onClick={handleFinalize} disabled={!cart.length || !orderData.projeto} className="w-full bg-[#c2ff59] text-black py-5 rounded-2xl font-black uppercase text-xs disabled:opacity-20 transition-all hover:scale-[1.02]">
-                                            Finalizar e Salvar Projeto
+                                            Finalizar e Salvar
                                         </button>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'kits' && (
+                            <div className="space-y-8">
+                                <div className="flex justify-between items-center bg-zinc-900/30 p-8 rounded-[3rem] border border-white/5">
+                                    <div>
+                                        <h2 className="text-3xl font-black uppercase tracking-tighter text-[#c2ff59]">Meus Kits</h2>
+                                        <p className="text-[10px] opacity-40 font-bold uppercase mt-1">Crie pacotes rápidos para acelerar as retiradas</p>
+                                    </div>
+                                    <button onClick={() => { setEditingKitId(null); setKitFormData({name:'', items:[]}); setIsKitModalOpen(true); }} className="bg-[#c2ff59] text-black px-8 py-4 rounded-2xl font-black text-[11px] uppercase hover:scale-105 transition-all">Montar Novo Kit</button>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {kits.map(k => (
+                                        <div key={k.firebaseId} className="bg-zinc-900/40 p-8 rounded-[2.5rem] border border-white/5 flex flex-col group hover:border-[#c2ff59]/30 transition-all">
+                                            <div className="flex justify-between items-start mb-6">
+                                                <div className="text-sm font-black uppercase text-[#c2ff59] flex items-center gap-2"><Icons.Package /> {k.name}</div>
+                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button onClick={() => { setEditingKitId(k.firebaseId); setKitFormData({name: k.name, items: k.items}); setIsKitModalOpen(true); }} className="p-2 bg-white/5 rounded-lg hover:text-[#c2ff59]"><Icons.Edit /></button>
+                                                    <button onClick={async () => { if(confirm('Excluir este kit?')) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('kits').doc(k.firebaseId).delete() }} className="p-2 bg-white/5 rounded-lg hover:text-red-500"><Icons.Trash /></button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-1.5 opacity-60 text-[10px] font-bold uppercase max-h-32 overflow-y-auto custom-scrollbar">
+                                                {k.items.map((it, i) => <div key={i}>• {it.name}</div>)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {kits.length === 0 && <div className="col-span-full py-20 text-center opacity-20 font-black uppercase text-sm tracking-widest">Nenhum kit montado ainda</div>}
                                 </div>
                             </div>
                         )}
@@ -420,9 +613,18 @@
 
                         {view === 'estoque' && (
                             <div className="space-y-8">
-                                <div className="flex justify-between items-center bg-zinc-900/30 p-8 rounded-[3rem] border border-white/5">
-                                    <h2 className="text-3xl font-black uppercase tracking-tighter">Estoque</h2>
-                                    <button onClick={() => { setEditingId(null); setFormData({code:'', name:'', totalQuantity:1}); setIsModalOpen(true); }} className="bg-[#c2ff59] text-black px-8 py-4 rounded-2xl font-black text-[11px] uppercase">Adicionar Item</button>
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-zinc-900/30 p-8 rounded-[3rem] border border-white/5">
+                                    <div>
+                                        <h2 className="text-3xl font-black uppercase tracking-tighter">Estoque</h2>
+                                        <p className="text-[10px] opacity-30 font-bold uppercase mt-1">Gerencie e edite seus ativos</p>
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <label className="bg-zinc-800 text-white px-6 py-4 rounded-2xl font-black text-[11px] uppercase cursor-pointer hover:bg-zinc-700 transition-all flex items-center gap-2">
+                                            <Icons.Upload /> Importar Planilha CSV
+                                            <input type="file" accept=".csv" className="hidden" onChange={handleCSVUpload} />
+                                        </label>
+                                        <button onClick={() => { setEditingId(null); setFormData({code:'', name:'', totalQuantity:1}); setIsModalOpen(true); }} className="bg-[#c2ff59] text-black px-8 py-4 rounded-2xl font-black text-[11px] uppercase shadow-lg shadow-[#c2ff59]/20 hover:scale-105 transition-all">Adicionar Item</button>
+                                    </div>
                                 </div>
                                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-5">
                                     {products.map(p => (
@@ -442,12 +644,14 @@
                         )}
                     </main>
 
+                    {/* Alertas */}
                     {statusMsg.text && (
-                        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-4 rounded-2xl border text-[10px] font-black uppercase bg-zinc-900 border-[#c2ff59] text-[#c2ff59] animate-bounce">
+                        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[200] px-8 py-4 rounded-2xl border text-[10px] font-black uppercase bg-zinc-900 border-[#c2ff59] text-[#c2ff59] animate-bounce shadow-2xl">
                             {statusMsg.text}
                         </div>
                     )}
 
+                    {/* Modal Item */}
                     {isModalOpen && (
                         <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-6 backdrop-blur-md">
                             <div className="bg-zinc-900 border border-white/10 p-10 rounded-[3.5rem] w-full max-w-md space-y-6">
@@ -460,6 +664,57 @@
                                 <div className="flex gap-3">
                                     <button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-zinc-800 rounded-2xl font-black text-[10px] uppercase">Cancelar</button>
                                     <button onClick={handleSaveItem} className="flex-1 py-4 bg-[#c2ff59] text-black rounded-2xl font-black text-[10px] uppercase">Salvar</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal Kits */}
+                    {isKitModalOpen && (
+                        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-6 backdrop-blur-md">
+                            <div className="bg-zinc-900 border border-[#c2ff59]/20 p-10 rounded-[3.5rem] w-full max-w-4xl space-y-6">
+                                <h2 className="text-2xl font-black uppercase text-[#c2ff59]">{editingKitId ? 'Editar Kit' : 'Montar Novo Kit'}</h2>
+                                
+                                <input placeholder="NOME DO KIT (Ex: KIT LENTES CINE)" className="w-full bg-black border border-white/10 p-5 rounded-2xl text-[12px] font-black uppercase outline-none focus:border-[#c2ff59]" value={kitFormData.name} onChange={e => setKitFormData({...kitFormData, name: e.target.value.toUpperCase()})} />
+                                
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-[40vh]">
+                                    <div className="space-y-4 flex flex-col h-full">
+                                        <div className="text-[10px] font-black uppercase opacity-40">Estoque Disponível</div>
+                                        <input type="text" placeholder="BUSCAR PARA ADICIONAR..." className="w-full bg-black border border-white/10 rounded-xl p-4 text-[10px] font-bold uppercase outline-none" value={kitSearch} onChange={e => setKitSearch(e.target.value)} />
+                                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-2">
+                                            {products.filter(p => p.name.toLowerCase().includes(kitSearch.toLowerCase())).map(p => (
+                                                <button key={p.firebaseId} onClick={() => setKitFormData({...kitFormData, items: [...kitFormData.items, p]})} className="w-full p-4 rounded-xl bg-zinc-800/50 hover:bg-[#c2ff59]/10 border border-transparent hover:border-[#c2ff59]/30 text-left transition-all flex justify-between items-center group">
+                                                    <div>
+                                                        <div className="text-[10px] font-black uppercase">{p.name}</div>
+                                                        <div className="text-[8px] opacity-40 font-bold">{p.code}</div>
+                                                    </div>
+                                                    <Icons.Plus />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-4 flex flex-col h-full border-l border-white/5 pl-8">
+                                        <div className="text-[10px] font-black uppercase text-[#c2ff59]">Itens neste Kit ({kitFormData.items.length})</div>
+                                        <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar bg-black/50 p-4 rounded-2xl border border-white/5">
+                                            {kitFormData.items.map((it, idx) => (
+                                                <div key={idx} className="flex justify-between items-center py-2 border-b border-white/5 last:border-0 uppercase text-[9px] font-black">
+                                                    <span>{it.name}</span>
+                                                    <button onClick={() => {
+                                                        const newItems = [...kitFormData.items];
+                                                        newItems.splice(idx, 1);
+                                                        setKitFormData({...kitFormData, items: newItems});
+                                                    }} className="text-red-500 opacity-40 hover:opacity-100 transition-opacity p-2"><Icons.Trash /></button>
+                                                </div>
+                                            ))}
+                                            {kitFormData.items.length === 0 && <div className="text-[10px] opacity-20 text-center py-10 font-bold">Nenhum item adicionado</div>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <button onClick={() => setIsKitModalOpen(false)} className="flex-1 py-5 bg-zinc-800 rounded-2xl font-black text-[10px] uppercase hover:bg-zinc-700 transition-all">Cancelar</button>
+                                    <button onClick={handleSaveKit} className="flex-1 py-5 bg-[#c2ff59] text-black rounded-2xl font-black text-[10px] uppercase shadow-lg shadow-[#c2ff59]/10">Salvar Kit</button>
                                 </div>
                             </div>
                         </div>
