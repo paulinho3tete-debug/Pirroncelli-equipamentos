@@ -2,10 +2,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PIRRONCELLI - Gestão de Estoque</title>
-    
-    <link rel="icon" type="image/png" href="favicon.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -19,15 +17,47 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #050505; color: white; margin: 0; overflow-x: hidden; }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 10px; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #050505; 
+            color: white; 
+            margin: 0; 
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #c2ff59; }
-        .logo-glow { filter: drop-shadow(0 0 8px rgba(194, 255, 89, 0.3)); }
-        .tab-active { color: #c2ff59; border-bottom: 2px solid #c2ff59; }
+        
+        /* Glassmorphism */
+        .glass-panel {
+            background: rgba(20, 20, 20, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .active-tab-mobile {
+            color: #c2ff59;
+            position: relative;
+        }
+        .active-tab-mobile::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 4px;
+            height: 4px;
+            background: #c2ff59;
+            border-radius: 50%;
+        }
+
+        @media (max-width: 768px) {
+            .main-content { padding-bottom: 100px; }
+            .sticky-form { position: relative !important; top: 0 !important; height: auto !important; }
+        }
     </style>
 </head>
 <body>
@@ -53,44 +83,18 @@
 
         const Icons = {
             Logo: () => (
-                <svg width="180" height="40" viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="logo-glow">
-                    <path d="M10 10L20 30L30 10" stroke="#c2ff59" strokeWidth="4" strokeLinecap="round"/>
-                    <text x="40" y="28" fill="#c2ff59" style={{ font: 'bold 22px Inter', letterSpacing: '-1px' }}>PIRRONCELLI</text>
+                <svg width="150" height="30" viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 10L20 30L30 10" stroke="#c2ff59" strokeWidth="5" strokeLinecap="round"/>
+                    <text x="40" y="28" fill="#c2ff59" style={{ font: '900 24px Inter', letterSpacing: '-1px' }}>PIRRONCELLI</text>
                 </svg>
             ),
-            FileText: () => (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-            ),
-            Trash: () => (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-            ),
-            Edit: () => (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            ),
-            Search: () => (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            ),
-            Calendar: () => (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            ),
-            Image: () => (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
-            ),
-            Info: () => (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-            ),
-            Package: () => (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-            ),
-            Plus: () => (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-            ),
-            Upload: () => (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            ),
-            User: () => (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            )
+            Plus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>,
+            History: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>,
+            Box: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>,
+            Layers: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m12 19 9-7-9-7-9 7 9 7z"/><path d="m3 12 9 7 9-7"/></svg>,
+            Trash: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
+            Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+            Download: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         };
 
         const formatDate = (dateStr) => {
@@ -102,33 +106,16 @@
         const App = () => {
             const [user, setUser] = React.useState(null);
             const [view, setView] = React.useState('retirada');
-            const [formTab, setFormTab] = React.useState('info');
-            const [listMode, setListMode] = React.useState('items');
-            
             const [products, setProducts] = React.useState([]);
             const [history, setHistory] = React.useState([]);
-            const [kits, setKits] = React.useState([]);
             const [cart, setCart] = React.useState([]);
-            
             const [search, setSearch] = React.useState('');
-            const [stockSearch, setStockSearch] = React.useState('');
+            const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
             
             const today = new Date().toISOString().split('T')[0];
             const [orderData, setOrderData] = React.useState({ 
                 projeto: '', trabalho: '', responsavel: '', dataRetirada: today, dataVolta: today, imagemRef: '' 
             });
-            
-            const [isModalOpen, setIsModalOpen] = React.useState(false);
-            const [editingId, setEditingId] = React.useState(null);
-            const [formData, setFormData] = React.useState({ code: '', name: '', totalQuantity: 1 });
-            
-            const [isKitModalOpen, setIsKitModalOpen] = React.useState(false);
-            const [editingKitId, setEditingKitId] = React.useState(null);
-            const [kitFormData, setKitFormData] = React.useState({ name: '', items: [] });
-            const [kitSearch, setKitSearch] = React.useState('');
-
-            const [statusMsg, setStatusMsg] = React.useState({ type: '', text: '' });
-            const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
 
             React.useEffect(() => {
                 auth.signInAnonymously().catch(e => console.error("Erro Auth:", e));
@@ -141,88 +128,15 @@
                     .onSnapshot(s => setProducts(s.docs.map(d => ({ ...d.data(), firebaseId: d.id }))));
                 const unsubHistory = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history')
                     .onSnapshot(s => setHistory(s.docs.map(d => ({ ...d.data(), firebaseId: d.id })).sort((a,b) => b.timestamp - a.timestamp)));
-                const unsubKits = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('kits')
-                    .onSnapshot(s => setKits(s.docs.map(d => ({ ...d.data(), firebaseId: d.id }))));
-                
-                return () => { unsubStock(); unsubHistory(); unsubKits(); };
+                return () => { unsubStock(); unsubHistory(); };
             }, [user]);
 
-            const showMsg = (type, text) => {
-                setStatusMsg({ type, text });
-                setTimeout(() => setStatusMsg({ type: '', text: '' }), 4000);
-            };
-
-            const handleCSVUpload = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    const text = event.target.result;
-                    const rows = text.split('\n');
-                    const firstRow = rows[0] || '';
-                    const delimiter = firstRow.includes(';') ? ';' : ',';
-                    const batch = db.batch();
-                    let addedCount = 0;
-                    for (let i = 1; i < rows.length; i++) {
-                        const row = rows[i].trim();
-                        if (!row) continue;
-                        const regex = new RegExp(`${delimiter}(?=(?:(?:[^"]*"){2})*[^"]*$)`);
-                        const cols = row.split(regex);
-                        const codigo = (cols[0] || '').replace(/"/g, '').trim();
-                        const nome = (cols[1] || '').replace(/"/g, '').trim();
-                        const marca = (cols[2] || '').replace(/"/g, '').trim();
-                        const modelo = (cols[3] || '').replace(/"/g, '').trim();
-                        if (codigo && nome && (codigo.startsWith('PIR') || codigo !== '')) {
-                            let nomeFinal = nome;
-                            if (marca && marca !== 'NÃO ESPECIFICADO') nomeFinal += ` - ${marca}`;
-                            if (modelo && modelo !== 'NÃO ESPECIFICADO') nomeFinal += ` (${modelo})`;
-                            const docRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc();
-                            batch.set(docRef, { code: codigo, name: nomeFinal, totalQuantity: 1, currentQuantity: 1, timestamp: Date.now() });
-                            addedCount++;
-                        }
-                    }
-                    if (addedCount > 0) { await batch.commit(); showMsg('success', `${addedCount} itens importados!`); }
-                    e.target.value = null;
-                };
-                reader.readAsText(file, 'UTF-8');
-            };
-
-            const handleSaveItem = async () => {
-                if (!formData.name || !formData.code) return showMsg('error', 'Preencha Nome e Código');
-                try {
-                    const payload = { ...formData, totalQuantity: parseInt(formData.totalQuantity), timestamp: Date.now() };
-                    if (editingId) {
-                        const oldItem = products.find(p => p.firebaseId === editingId);
-                        payload.currentQuantity = Math.max(0, oldItem.currentQuantity + (parseInt(formData.totalQuantity) - oldItem.totalQuantity));
-                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(editingId).update(payload);
-                    } else {
-                        payload.currentQuantity = parseInt(formData.totalQuantity);
-                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').add(payload);
-                    }
-                    setIsModalOpen(false); setEditingId(null);
-                } catch (e) { showMsg('error', 'Erro ao salvar'); }
-            };
-
-            const handleSaveKit = async () => {
-                if (!kitFormData.name || kitFormData.items.length === 0) return showMsg('error', 'Kit vazio ou sem nome');
-                try {
-                    const payload = { name: kitFormData.name.toUpperCase(), items: kitFormData.items, timestamp: Date.now() };
-                    if (editingKitId) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('kits').doc(editingKitId).update(payload);
-                    else await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('kits').add(payload);
-                    setIsKitModalOpen(false); setEditingKitId(null);
-                } catch (e) { showMsg('error', 'Erro ao salvar kit'); }
-            };
-
             const handleFinalize = async () => {
-                if (!orderData.projeto || !orderData.trabalho || !orderData.responsavel || !cart.length) return showMsg('error', 'Dados incompletos');
+                if (!orderData.projeto || !cart.length) return alert('Selecione itens e preencha o projeto.');
                 try {
                     const order = {
+                        ...orderData,
                         projeto: orderData.projeto.toUpperCase(),
-                        trabalho: orderData.trabalho.toUpperCase(),
-                        responsavel: orderData.responsavel.toUpperCase(),
-                        dataRetirada: orderData.dataRetirada,
-                        dataVolta: orderData.dataVolta,
-                        imagemRef: orderData.imagemRef,
                         dataRegistro: new Date().toLocaleDateString('pt-BR'),
                         timestamp: Date.now(),
                         items: cart.map(i => ({ name: i.name, code: i.code })),
@@ -236,10 +150,9 @@
                     }
                     setCart([]); setOrderData({ projeto: '', trabalho: '', responsavel: '', dataRetirada: today, dataVolta: today, imagemRef: '' });
                     setView('historico');
-                } catch (e) { showMsg('error', 'Erro ao processar'); }
+                } catch (e) { alert('Erro ao salvar.'); }
             };
 
-            // NOVA LÓGICA DE PDF MULTI-PÁGINA
             const generatePDF = async (order) => {
                 setIsGeneratingPdf(true);
                 const pdf = new jsPDF('p', 'mm', 'a4');
@@ -249,285 +162,193 @@
                 let yPos = 20;
 
                 const checkNewPage = (needed) => {
-                    if (yPos + needed > pageHeight - 20) {
-                        pdf.addPage();
-                        yPos = 20;
-                        drawHeader();
-                    }
+                    if (yPos + needed > pageHeight - 20) { pdf.addPage(); yPos = 20; drawHeader(); }
                 };
 
                 const drawHeader = () => {
                     pdf.setFont('helvetica', 'bold');
-                    pdf.setFontSize(28);
+                    pdf.setFontSize(24);
+                    pdf.setTextColor(0);
                     pdf.text("PIRRONCELLI", margin, yPos);
-                    
                     pdf.setFontSize(8);
-                    pdf.setTextColor(100);
-                    pdf.text("LOCAÇÃO DE EQUIPAMENTOS", margin, yPos + 5);
-                    
-                    pdf.setFontSize(10);
-                    pdf.text(`REGISTRO: ${order.dataRegistro}`, pageWidth - margin, yPos, { align: 'right' });
-                    
+                    pdf.setTextColor(150);
+                    pdf.text("GESTÃO DE EQUIPAMENTOS", margin, yPos + 5);
                     yPos += 15;
-                    pdf.setDrawColor(0);
-                    pdf.setLineWidth(0.5);
+                    pdf.setDrawColor(230);
                     pdf.line(margin, yPos, pageWidth - margin, yPos);
                     yPos += 10;
                 };
 
-                // Início
                 drawHeader();
-
-                // Info Box
+                
+                // Info Section
                 pdf.setFillColor(245, 245, 245);
-                pdf.rect(margin, yPos, (pageWidth - (margin*2))/2 - 5, 30, 'F');
-                pdf.setFontSize(8);
-                pdf.setTextColor(150);
-                pdf.text("PROJETO", margin + 5, yPos + 7);
-                pdf.setFontSize(14);
-                pdf.setTextColor(0);
-                pdf.text(order.projeto, margin + 5, yPos + 16);
-                pdf.setFontSize(9);
-                pdf.text(order.trabalho, margin + 5, yPos + 24);
-
-                pdf.setDrawColor(230);
-                pdf.rect(margin + (pageWidth - (margin*2))/2 + 5, yPos, (pageWidth - (margin*2))/2 - 5, 30);
-                pdf.setFontSize(8);
-                pdf.setTextColor(150);
-                pdf.text("RESPONSÁVEL & DATAS", margin + (pageWidth - (margin*2))/2 + 10, yPos + 7);
+                pdf.rect(margin, yPos, pageWidth - (margin * 2), 35, 'F');
                 pdf.setFontSize(10);
                 pdf.setTextColor(0);
-                pdf.text(`RESP: ${order.responsavel}`, margin + (pageWidth - (margin*2))/2 + 10, yPos + 15);
-                pdf.text(`SAÍDA: ${formatDate(order.dataRetirada)}`, margin + (pageWidth - (margin*2))/2 + 10, yPos + 20);
-                pdf.text(`VOLTA: ${formatDate(order.dataVolta)}`, margin + (pageWidth - (margin*2))/2 + 10, yPos + 25);
-
+                pdf.text(`PROJETO: ${order.projeto}`, margin + 5, yPos + 10);
+                pdf.text(`RESPONSÁVEL: ${order.responsavel}`, margin + 5, yPos + 18);
+                pdf.text(`DATA SAÍDA: ${formatDate(order.dataRetirada)} | VOLTA: ${formatDate(order.dataVolta)}`, margin + 5, yPos + 26);
                 yPos += 45;
 
-                // Tabela de Itens
+                // Items Section
                 pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(11);
-                pdf.text("EQUIPAMENTOS SOLICITADOS", margin, yPos);
+                pdf.text("ITENS DA ORDEM", margin, yPos);
                 yPos += 5;
                 pdf.line(margin, yPos, pageWidth - margin, yPos);
-                yPos += 10;
+                yPos += 8;
 
                 const counts = {};
                 order.items.forEach(it => { counts[it.name] = (counts[it.name] || 0) + 1; });
 
                 pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(10);
-
                 Object.entries(counts).forEach(([name, count]) => {
-                    checkNewPage(12);
-                    const codes = order.items.filter(it => it.name === name).map(it => it.code).join(', ');
-                    
-                    pdf.setFont('helvetica', 'bold');
-                    pdf.text(`${count}x`, margin, yPos);
-                    pdf.setFont('helvetica', 'normal');
-                    pdf.text(name, margin + 10, yPos);
-                    
-                    pdf.setFontSize(8);
-                    pdf.setTextColor(120);
-                    const wrappedCodes = pdf.splitTextToSize(`[${codes}]`, pageWidth - margin - 30);
-                    pdf.text(wrappedCodes, margin + 10, yPos + 4);
-                    
-                    yPos += (wrappedCodes.length * 4) + 6;
-                    pdf.setDrawColor(245);
-                    pdf.line(margin, yPos - 3, pageWidth - margin, yPos - 3);
-                    pdf.setTextColor(0);
-                    pdf.setFontSize(10);
+                    checkNewPage(10);
+                    pdf.text(`${count}x ${name}`, margin, yPos);
+                    yPos += 8;
                 });
 
-                // Imagem de Referência
-                if (order.imagemRef) {
-                    try {
-                        checkNewPage(80);
-                        yPos += 10;
-                        pdf.setFont('helvetica', 'bold');
-                        pdf.setFontSize(9);
-                        pdf.text("REFERÊNCIA VISUAL", margin, yPos);
-                        yPos += 5;
-
-                        // Função auxiliar para carregar imagem e converter para base64
-                        const img = new Image();
-                        img.crossOrigin = "Anonymous";
-                        img.src = order.imagemRef;
-                        
-                        await new Promise((resolve) => {
-                            img.onload = () => {
-                                const canvas = document.createElement('canvas');
-                                const ctx = canvas.getContext('2d');
-                                canvas.width = img.width;
-                                canvas.height = img.height;
-                                ctx.drawImage(img, 0, 0);
-                                const base64 = canvas.toDataURL('image/jpeg');
-                                
-                                const maxW = pageWidth - (margin * 2);
-                                const maxH = 100;
-                                let imgW = img.width;
-                                let imgH = img.height;
-                                const ratio = imgW / imgH;
-                                
-                                if (imgW > maxW) { imgW = maxW; imgH = imgW / ratio; }
-                                if (imgH > maxH) { imgH = maxH; imgW = imgH * ratio; }
-
-                                pdf.addImage(base64, 'JPEG', margin, yPos, imgW, imgH);
-                                yPos += imgH + 10;
-                                resolve();
-                            };
-                            img.onerror = resolve; // Pula se der erro
-                        });
-                    } catch (e) { console.error("Erro imagem:", e); }
-                }
-
-                // Rodapé
-                const totalPages = pdf.internal.getNumberOfPages();
-                for (let i = 1; i <= totalPages; i++) {
-                    pdf.setPage(i);
-                    pdf.setFontSize(8);
-                    pdf.setTextColor(180);
-                    pdf.text(`Página ${i} de ${totalPages} | Gerado via Sistema Pirroncelli`, pageWidth/2, pageHeight - 10, { align: 'center' });
-                }
-
-                pdf.save(`PIRRONCELLI_${order.projeto.replace(/\s/g, '_')}.pdf`);
+                pdf.save(`PIRRONCELLI_${order.projeto}.pdf`);
                 setIsGeneratingPdf(false);
             };
 
             const getCartCount = (id) => cart.filter(i => i.firebaseId === id).length;
 
-            if (!user) return <div className="h-screen bg-black flex items-center justify-center text-[#c2ff59] font-black uppercase tracking-widest animate-pulse text-xs">Carregando Banco de Dados...</div>;
+            if (!user) return <div className="h-screen flex items-center justify-center bg-black"><Icons.Logo /></div>;
 
             return (
-                <div className="min-h-screen pb-20">
-                    <header className="p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-b border-white/5 sticky top-0 bg-black/90 backdrop-blur-xl z-50">
+                <div className="flex flex-col min-h-screen">
+                    {/* Header Desktop */}
+                    <header className="hidden md:flex items-center justify-between p-6 glass-panel sticky top-0 z-50">
                         <Icons.Logo />
-                        <div className="flex bg-zinc-900 p-1.5 rounded-2xl border border-white/5">
-                            {['retirada', 'historico', 'kits', 'estoque'].map(t => (
-                                <button key={t} onClick={() => setView(t)} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${view === t ? 'bg-[#c2ff59] text-black' : 'opacity-40 hover:opacity-100'}`}>
-                                    {t === 'retirada' ? 'Nova OD' : t === 'historico' ? 'Histórico' : t === 'kits' ? 'Kits' : 'Estoque'}
+                        <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
+                            {['retirada', 'historico', 'estoque'].map(t => (
+                                <button key={t} onClick={() => setView(t)} className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${view === t ? 'bg-[#c2ff59] text-black' : 'opacity-40 hover:opacity-100'}`}>
+                                    {t === 'retirada' ? 'Nova Saída' : t === 'historico' ? 'Histórico' : 'Estoque'}
                                 </button>
                             ))}
                         </div>
                     </header>
 
-                    <main className="p-6 max-w-7xl mx-auto">
+                    {/* Logo Mobile */}
+                    <div className="md:hidden flex justify-center py-6 border-b border-white/5">
+                        <Icons.Logo />
+                    </div>
+
+                    <main className="p-4 md:p-8 max-w-7xl mx-auto w-full main-content">
                         {view === 'retirada' && (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                                <div className="h-[calc(100vh-160px)] flex flex-col sticky top-28">
-                                    <div className="mb-6 space-y-4">
-                                        <div className="flex bg-zinc-900 p-1 rounded-2xl w-fit border border-white/5">
-                                            <button onClick={() => setListMode('items')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase ${listMode === 'items' ? 'bg-[#c2ff59]/20 text-[#c2ff59]' : 'opacity-40'}`}>Itens</button>
-                                            <button onClick={() => setListMode('kits')} className={`px-6 py-2.5 rounded-xl text-[10px] font-black uppercase ${listMode === 'kits' ? 'bg-[#c2ff59]/20 text-[#c2ff59]' : 'opacity-40'}`}>Kits</button>
-                                        </div>
-                                        <div className="relative">
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20"><Icons.Search /></div>
-                                            <input type="text" placeholder="BUSCAR..." className="w-full bg-zinc-900/50 border border-white/10 rounded-2xl p-4 pl-12 text-xs font-bold uppercase outline-none focus:border-[#c2ff59]" value={search} onChange={e => setSearch(e.target.value)} />
-                                        </div>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
+                                {/* Lista de Seleção */}
+                                <div className="flex flex-col space-y-4">
+                                    <div className="relative group">
+                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20"><Icons.Search /></div>
+                                        <input 
+                                            type="text" 
+                                            placeholder="BUSCAR EQUIPAMENTO..." 
+                                            className="w-full bg-zinc-900 border border-white/10 rounded-2xl p-4 pl-12 text-xs font-bold uppercase outline-none focus:border-[#c2ff59] transition-all"
+                                            value={search}
+                                            onChange={e => setSearch(e.target.value)}
+                                        />
                                     </div>
-                                    <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-2">
-                                        {listMode === 'items' ? 
-                                            products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.code.toLowerCase().includes(search.toLowerCase())).map(p => {
-                                                const av = p.currentQuantity - getCartCount(p.firebaseId);
-                                                return (
-                                                    <button key={p.firebaseId} disabled={av <= 0} onClick={() => setCart([...cart, p])} className={`w-full p-4 rounded-2xl bg-zinc-900/40 border border-white/5 flex items-center justify-between group ${av <= 0 ? 'opacity-20' : 'hover:border-[#c2ff59]/30'}`}>
-                                                        <div className="text-left">
-                                                            <div className="text-[10px] font-black uppercase">{p.name}</div>
-                                                            <div className="text-[8px] opacity-30 font-bold">{p.code}</div>
-                                                        </div>
-                                                        <div className={`font-black text-xs ${av <= 0 ? 'text-red-500' : 'text-[#c2ff59]'}`}>{av}</div>
-                                                    </button>
-                                                )
-                                            }) : 
-                                            kits.filter(k => k.name.toLowerCase().includes(search.toLowerCase())).map(k => (
-                                                <div key={k.firebaseId} className="p-4 rounded-2xl bg-zinc-900/40 border border-[#c2ff59]/10 flex flex-col gap-3">
-                                                    <div className="flex justify-between items-center">
-                                                        <div className="text-[10px] font-black uppercase text-[#c2ff59]">{k.name}</div>
-                                                        <button onClick={() => {
-                                                            const valid = k.items.filter(it => products.find(p => p.firebaseId === it.firebaseId && (p.currentQuantity - getCartCount(it.firebaseId)) > 0));
-                                                            setCart([...cart, ...valid]);
-                                                        }} className="bg-[#c2ff59] text-black px-3 py-1.5 rounded-xl text-[8px] font-black uppercase">Add Kit</button>
+                                    <div className="grid grid-cols-1 md:grid-cols-1 gap-2 max-h-[400px] md:max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar pr-2">
+                                        {products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => {
+                                            const av = (p.currentQuantity || 0) - getCartCount(p.firebaseId);
+                                            return (
+                                                <button 
+                                                    key={p.firebaseId} 
+                                                    disabled={av <= 0}
+                                                    onClick={() => setCart([...cart, p])}
+                                                    className={`p-4 rounded-2xl border flex justify-between items-center transition-all ${av > 0 ? 'bg-zinc-900/50 border-white/5 hover:border-[#c2ff59]/40 active:scale-[0.98]' : 'bg-zinc-900/20 border-white/5 opacity-40'}`}
+                                                >
+                                                    <div className="text-left">
+                                                        <div className="text-[10px] font-black uppercase tracking-tight">{p.name}</div>
+                                                        <div className="text-[8px] opacity-30 font-bold">{p.code}</div>
                                                     </div>
-                                                </div>
-                                            ))
-                                        }
+                                                    <div className={`text-xs font-black ${av <= 0 ? 'text-red-500' : 'text-[#c2ff59]'}`}>{av}</div>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
 
-                                <div className="bg-zinc-900/40 border border-white/5 rounded-[3rem] flex flex-col h-[calc(100vh-160px)] sticky top-28 overflow-hidden shadow-2xl">
-                                    <div className="flex px-8 pt-6 border-b border-white/5">
-                                        <button onClick={() => setFormTab('info')} className={`pb-4 px-4 text-[10px] font-black uppercase ${formTab === 'info' ? 'tab-active' : 'opacity-30'}`}>Informações</button>
-                                        <button onClick={() => setFormTab('media')} className={`pb-4 px-4 text-[10px] font-black uppercase ${formTab === 'media' ? 'tab-active' : 'opacity-30'}`}>Referência</button>
-                                    </div>
-                                    <div className="p-8 flex-1 overflow-y-auto custom-scrollbar space-y-6">
-                                        {formTab === 'info' ? (
-                                            <div className="space-y-4">
-                                                <input placeholder="CLIENTE / PROJETO" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl text-[10px] font-bold uppercase outline-none focus:border-[#c2ff59]" value={orderData.projeto} onChange={e => setOrderData({...orderData, projeto: e.target.value})} />
-                                                <input placeholder="TIPO DE TRABALHO" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl text-[10px] font-bold uppercase outline-none focus:border-[#c2ff59]" value={orderData.trabalho} onChange={e => setOrderData({...orderData, trabalho: e.target.value})} />
-                                                <input placeholder="NOME DO RESPONSÁVEL" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl text-[10px] font-bold uppercase outline-none focus:border-[#c2ff59]" value={orderData.responsavel} onChange={e => setOrderData({...orderData, responsavel: e.target.value})} />
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="text-[8px] opacity-30 font-black ml-2 mb-1 block uppercase">Retirada</label>
-                                                        <input type="date" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl text-[10px] font-bold outline-none" value={orderData.dataRetirada} onChange={e => setOrderData({...orderData, dataRetirada: e.target.value})} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="text-[8px] opacity-30 font-black ml-2 mb-1 block uppercase">Devolução</label>
-                                                        <input type="date" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl text-[10px] font-bold outline-none" value={orderData.dataVolta} onChange={e => setOrderData({...orderData, dataVolta: e.target.value})} />
-                                                    </div>
-                                                </div>
+                                {/* Carrinho e Dados */}
+                                <div className="flex flex-col space-y-6 sticky-form top-24 h-fit">
+                                    <div className="bg-zinc-900/80 border border-white/5 rounded-[2.5rem] p-6 md:p-8 space-y-6 shadow-xl">
+                                        <div className="space-y-4">
+                                            <input 
+                                                placeholder="NOME DO PROJETO" 
+                                                className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-[#c2ff59]"
+                                                value={orderData.projeto}
+                                                onChange={e => setOrderData({...orderData, projeto: e.target.value})}
+                                            />
+                                            <input 
+                                                placeholder="RESPONSÁVEL PELA RETIRADA" 
+                                                className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-[#c2ff59]"
+                                                value={orderData.responsavel}
+                                                onChange={e => setOrderData({...orderData, responsavel: e.target.value})}
+                                            />
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <input type="date" className="bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black outline-none" value={orderData.dataRetirada} onChange={e => setOrderData({...orderData, dataRetirada: e.target.value})} />
+                                                <input type="date" className="bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black outline-none" value={orderData.dataVolta} onChange={e => setOrderData({...orderData, dataVolta: e.target.value})} />
                                             </div>
-                                        ) : (
-                                            <div className="space-y-4 text-center">
-                                                <input placeholder="URL DA IMAGEM DE REFERÊNCIA" className="w-full bg-black/50 border border-white/10 p-4 rounded-2xl text-[10px] font-bold outline-none" value={orderData.imagemRef} onChange={e => setOrderData({...orderData, imagemRef: e.target.value})} />
-                                                {orderData.imagemRef && <img src={orderData.imagemRef} className="max-h-48 mx-auto rounded-2xl border border-white/10" />}
-                                            </div>
-                                        )}
-                                        <div className="pt-6 border-t border-white/5">
-                                            <div className="text-[9px] font-black opacity-30 mb-4 uppercase">Carrinho de Saída ({cart.length})</div>
+                                        </div>
+
+                                        <div className="pt-4 border-t border-white/5 max-h-[150px] overflow-y-auto custom-scrollbar">
+                                            <div className="text-[9px] font-black opacity-30 mb-4 uppercase">Carrinho ({cart.length})</div>
                                             <div className="space-y-2">
                                                 {cart.map((c, i) => (
-                                                    <div key={i} className="flex justify-between items-center text-[9px] font-bold uppercase bg-black/30 p-3 rounded-xl">
-                                                        <span className="truncate mr-4">{c.name}</span>
-                                                        <button onClick={() => setCart(cart.filter((_, idx) => idx !== i))} className="text-red-500 opacity-30 hover:opacity-100"><Icons.Trash /></button>
+                                                    <div key={i} className="flex justify-between items-center bg-black/20 p-3 rounded-xl">
+                                                        <span className="text-[9px] font-black uppercase truncate mr-4">{c.name}</span>
+                                                        <button onClick={() => setCart(cart.filter((_, idx) => idx !== i))} className="text-red-500/40 hover:text-red-500"><Icons.Trash /></button>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-                                    </div>
-                                    <div className="p-8 pt-0">
-                                        <button onClick={handleFinalize} className="w-full bg-[#c2ff59] text-black py-4 rounded-2xl font-black uppercase text-[11px] hover:scale-[1.02] transition-all disabled:opacity-20" disabled={!cart.length || !orderData.projeto}>Registrar e Sair</button>
+
+                                        <button 
+                                            onClick={handleFinalize}
+                                            disabled={!cart.length || !orderData.projeto}
+                                            className="w-full bg-[#c2ff59] text-black py-4 rounded-2xl font-black uppercase text-[11px] shadow-lg shadow-[#c2ff59]/10 active:scale-95 transition-all disabled:opacity-20"
+                                        >
+                                            Finalizar Retirada
+                                        </button>
                                     </div>
                                 </div>
                             </div>
                         )}
 
                         {view === 'historico' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {history.map(h => (
-                                    <div key={h.firebaseId} className="bg-zinc-900/60 p-6 rounded-[2.5rem] border border-white/5 flex flex-col group">
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div>
-                                                <div className="font-black text-[#c2ff59] uppercase">{h.projeto}</div>
-                                                <div className="text-[9px] opacity-40 font-bold uppercase">{h.trabalho}</div>
+                                    <div key={h.firebaseId} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-white/5 flex flex-col justify-between hover:bg-zinc-900 transition-all">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="font-black text-[#c2ff59] uppercase text-sm leading-tight">{h.projeto}</div>
+                                                <div className="text-[8px] font-black opacity-30">{h.dataRegistro}</div>
                                             </div>
-                                            <button onClick={() => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history').doc(h.firebaseId).delete()} className="p-2 opacity-0 group-hover:opacity-100 text-red-500"><Icons.Trash /></button>
-                                        </div>
-                                        <div className="text-[9px] font-bold opacity-60 uppercase mb-6 space-y-1">
-                                            <div className="flex items-center gap-2"><Icons.User /> {h.responsavel}</div>
-                                            <div className="flex items-center gap-2"><Icons.Calendar /> {formatDate(h.dataRetirada)} a {formatDate(h.dataVolta)}</div>
+                                            <div className="text-[9px] font-bold opacity-50 uppercase mb-4 space-y-1">
+                                                <div>POR: {h.responsavel}</div>
+                                                <div>VOLTA: {formatDate(h.dataVolta)}</div>
+                                            </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => generatePDF(h)} disabled={isGeneratingPdf} className="flex-1 bg-white/5 p-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2">
-                                                {isGeneratingPdf ? 'Gerando...' : <><Icons.FileText /> PDF</>}
+                                            <button onClick={() => generatePDF(h)} className="flex-1 bg-white/5 p-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2">
+                                                <Icons.Download /> PDF
                                             </button>
                                             {!h.concluido && (
-                                                <button onClick={async () => {
-                                                    if(!confirm('Confirmar devolução total?')) return;
-                                                    await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history').doc(h.firebaseId).update({ concluido: true });
-                                                    for(const item of h.items) {
-                                                        const p = products.find(prod => prod.code === item.code);
-                                                        if(p) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(p.firebaseId).update({ currentQuantity: p.currentQuantity + 1 });
-                                                    }
-                                                }} className="flex-1 bg-[#c2ff59] text-black p-3 rounded-xl text-[9px] font-black uppercase">Baixa</button>
+                                                <button 
+                                                    onClick={async () => {
+                                                        if(!confirm('Baixa no sistema?')) return;
+                                                        await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history').doc(h.firebaseId).update({ concluido: true });
+                                                        for(const item of h.items) {
+                                                            const p = products.find(prod => prod.code === item.code);
+                                                            if(p) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(p.firebaseId).update({ currentQuantity: (p.currentQuantity || 0) + 1 });
+                                                        }
+                                                    }}
+                                                    className="flex-1 bg-[#c2ff59] text-black p-3 rounded-xl text-[9px] font-black uppercase"
+                                                >
+                                                    Dar Baixa
+                                                </button>
                                             )}
                                         </div>
                                     </div>
@@ -536,111 +357,35 @@
                         )}
 
                         {view === 'estoque' && (
-                            <div className="space-y-6">
-                                <div className="flex justify-between items-center bg-zinc-900/40 p-6 rounded-[2rem] border border-white/5">
-                                    <input placeholder="BUSCAR ESTOQUE..." className="bg-black/50 border border-white/10 p-3 rounded-xl text-[10px] font-bold uppercase w-64 outline-none focus:border-[#c2ff59]" value={stockSearch} onChange={e => setStockSearch(e.target.value)} />
-                                    <div className="flex gap-3">
-                                        <label className="bg-zinc-800 p-3 rounded-xl text-[9px] font-black uppercase cursor-pointer hover:bg-zinc-700 transition-all"><Icons.Upload /> CSV<input type="file" className="hidden" onChange={handleCSVUpload} /></label>
-                                        <button onClick={() => { setEditingId(null); setFormData({code:'', name:'', totalQuantity:1}); setIsModalOpen(true); }} className="bg-[#c2ff59] text-black px-6 py-3 rounded-xl font-black text-[9px] uppercase">Novo Item</button>
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                {products.map(p => (
+                                    <div key={p.firebaseId} className="bg-zinc-900/40 p-4 rounded-3xl border border-white/5 flex flex-col justify-between">
+                                        <div className="text-[9px] font-black uppercase tracking-tight leading-tight mb-4">{p.name}</div>
+                                        <div className="flex justify-between items-end">
+                                            <div className="text-[7px] font-black opacity-20 uppercase">Saldo</div>
+                                            <div className="text-xs font-black text-[#c2ff59]">{p.currentQuantity}/{p.totalQuantity}</div>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                    {products.filter(p => p.name.toLowerCase().includes(stockSearch.toLowerCase()) || p.code.toLowerCase().includes(stockSearch.toLowerCase())).map(p => (
-                                        <div key={p.firebaseId} className="bg-zinc-900/40 p-5 rounded-[2rem] border border-white/5 hover:border-[#c2ff59]/30 transition-all flex flex-col justify-between group">
-                                            <div className="text-[9px] font-black uppercase leading-tight">{p.name}</div>
-                                            <div className="flex justify-between items-end mt-4">
-                                                <div>
-                                                    <div className="text-[7px] font-black opacity-20 uppercase">Saldo</div>
-                                                    <div className={`font-black text-xs ${p.currentQuantity === 0 ? 'text-red-500' : 'text-[#c2ff59]'}`}>{p.currentQuantity}/{p.totalQuantity}</div>
-                                                </div>
-                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100">
-                                                    <button onClick={() => { setEditingId(p.firebaseId); setFormData({name:p.name, code:p.code, totalQuantity:p.totalQuantity}); setIsModalOpen(true); }} className="text-white/20 hover:text-white"><Icons.Edit /></button>
-                                                    <button onClick={() => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(p.firebaseId).delete()} className="text-white/20 hover:text-red-500"><Icons.Trash /></button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {view === 'kits' && (
-                             <div className="space-y-6">
-                                <div className="flex justify-between items-center bg-zinc-900/40 p-6 rounded-[2rem] border border-white/5">
-                                    <div className="text-xl font-black uppercase text-[#c2ff59]">Biblioteca de Kits</div>
-                                    <button onClick={() => { setEditingKitId(null); setKitFormData({name:'', items:[]}); setIsKitModalOpen(true); }} className="bg-[#c2ff59] text-black px-6 py-3 rounded-xl font-black text-[9px] uppercase">Novo Kit</button>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    {kits.map(k => (
-                                        <div key={k.firebaseId} className="bg-zinc-900/40 p-6 rounded-[2rem] border border-white/5 flex flex-col">
-                                            <div className="text-sm font-black uppercase text-[#c2ff59] mb-4 flex items-center gap-2"><Icons.Package /> {k.name}</div>
-                                            <div className="text-[9px] opacity-40 font-bold uppercase space-y-1 mb-6 flex-1 max-h-32 overflow-y-auto custom-scrollbar">
-                                                {k.items.map((it, i) => <div key={i}>• {it.name}</div>)}
-                                            </div>
-                                            <div className="flex gap-3 pt-4 border-t border-white/5">
-                                                <button onClick={() => { setEditingKitId(k.firebaseId); setKitFormData({name: k.name, items: k.items}); setIsKitModalOpen(true); }} className="flex-1 bg-white/5 p-2 rounded-xl text-[9px] font-black uppercase">Editar</button>
-                                                <button onClick={() => db.collection('artifacts').doc(appId).collection('public').doc('data').collection('kits').doc(k.firebaseId).delete()} className="p-2 text-red-500"><Icons.Trash /></button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                ))}
                             </div>
                         )}
                     </main>
 
-                    {/* MODAIS (Item e Kit) */}
-                    {isModalOpen && (
-                        <div className="fixed inset-0 bg-black/90 z-[100] flex items-center justify-center p-6 backdrop-blur-sm">
-                            <div className="bg-zinc-900 border border-white/10 p-8 rounded-[3rem] w-full max-w-sm space-y-6 shadow-2xl">
-                                <h2 className="text-xl font-black uppercase text-[#c2ff59]">{editingId ? 'Editar' : 'Novo'} Equipamento</h2>
-                                <div className="space-y-4">
-                                    <input placeholder="NOME" className="w-full bg-black border border-white/10 p-4 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-[#c2ff59]" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value.toUpperCase()})} />
-                                    <input placeholder="PATRIMÔNIO" className="w-full bg-black border border-white/10 p-4 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-[#c2ff59]" value={formData.code} onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})} />
-                                    <input type="number" className="w-full bg-black border border-white/10 p-4 rounded-xl text-[10px] font-bold outline-none" value={formData.totalQuantity} onChange={e => setFormData({...formData, totalQuantity: e.target.value})} />
-                                </div>
-                                <div className="flex gap-3">
-                                    <button onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-zinc-800 rounded-xl font-black text-[9px] uppercase">Voltar</button>
-                                    <button onClick={handleSaveItem} className="flex-1 py-4 bg-[#c2ff59] text-black rounded-xl font-black text-[9px] uppercase">Salvar</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {isKitModalOpen && (
-                        <div className="fixed inset-0 bg-black/95 z-[100] flex items-center justify-center p-6 backdrop-blur-md">
-                            <div className="bg-zinc-900 border border-[#c2ff59]/20 p-10 rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col">
-                                <h2 className="text-2xl font-black uppercase text-[#c2ff59] mb-8">Montagem de Kit</h2>
-                                <input placeholder="NOME DO KIT" className="w-full bg-black border border-white/10 p-5 rounded-2xl text-[12px] font-black uppercase outline-none mb-8 focus:border-[#c2ff59]" value={kitFormData.name} onChange={e => setKitFormData({...kitFormData, name: e.target.value.toUpperCase()})} />
-                                <div className="grid grid-cols-2 gap-8 mb-8">
-                                    <div className="space-y-4">
-                                        <div className="text-[9px] font-black opacity-30 uppercase">Acervo</div>
-                                        <input placeholder="FILTRAR..." className="w-full bg-black border border-white/5 p-3 rounded-xl text-[9px] outline-none" value={kitSearch} onChange={e => setKitSearch(e.target.value)} />
-                                        <div className="h-64 overflow-y-auto space-y-1 custom-scrollbar">
-                                            {products.filter(p => p.name.toLowerCase().includes(kitSearch.toLowerCase())).map(p => (
-                                                <button key={p.firebaseId} onClick={() => setKitFormData({...kitFormData, items: [...kitFormData.items, p]})} className="w-full p-3 bg-white/5 rounded-xl text-left text-[9px] font-bold uppercase hover:bg-[#c2ff59]/10">
-                                                    {p.name}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="space-y-4">
-                                        <div className="text-[9px] font-black text-[#c2ff59] uppercase">No Kit ({kitFormData.items.length})</div>
-                                        <div className="h-64 overflow-y-auto space-y-1 custom-scrollbar bg-black/40 p-4 rounded-xl">
-                                            {kitFormData.items.map((it, idx) => (
-                                                <div key={idx} className="flex justify-between items-center text-[9px] font-bold uppercase py-1">
-                                                    <span>{it.name}</span>
-                                                    <button onClick={() => {
-                                                        const n = [...kitFormData.items]; n.splice(idx,1); setKitFormData({...kitFormData, items: n});
-                                                    }} className="text-red-500"><Icons.Trash /></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                                <button onClick={handleSaveKit} className="w-full py-5 bg-[#c2ff59] text-black rounded-2xl font-black uppercase text-xs">Salvar Kit</button>
-                            </div>
-                        </div>
-                    )}
+                    {/* Bottom Navigation Mobile */}
+                    <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-white/5 px-8 py-4 flex justify-between items-center z-[100]">
+                        <button onClick={() => setView('retirada')} className={`flex flex-col items-center gap-1 ${view === 'retirada' ? 'active-tab-mobile' : 'opacity-30'}`}>
+                            <Icons.Plus />
+                            <span className="text-[8px] font-black uppercase">Nova</span>
+                        </button>
+                        <button onClick={() => setView('historico')} className={`flex flex-col items-center gap-1 ${view === 'historico' ? 'active-tab-mobile' : 'opacity-30'}`}>
+                            <Icons.History />
+                            <span className="text-[8px] font-black uppercase">Docs</span>
+                        </button>
+                        <button onClick={() => setView('estoque')} className={`flex flex-col items-center gap-1 ${view === 'estoque' ? 'active-tab-mobile' : 'opacity-30'}`}>
+                            <Icons.Box />
+                            <span className="text-[8px] font-black uppercase">Caixa</span>
+                        </button>
+                    </nav>
                 </div>
             );
         };
