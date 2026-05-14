@@ -31,7 +31,6 @@
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
         
-        /* Glassmorphism */
         .glass-panel {
             background: rgba(20, 20, 20, 0.7);
             backdrop-filter: blur(12px);
@@ -91,7 +90,6 @@
             Plus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>,
             History: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5M12 7v5l4 2"/></svg>,
             Box: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>,
-            Layers: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m12 19 9-7-9-7-9 7 9 7z"/><path d="m3 12 9 7 9-7"/></svg>,
             Trash: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>,
             Search: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
             Download: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -114,7 +112,7 @@
             
             const today = new Date().toISOString().split('T')[0];
             const [orderData, setOrderData] = React.useState({ 
-                projeto: '', trabalho: '', responsavel: '', dataRetirada: today, dataVolta: today, imagemRef: '' 
+                projeto: '', responsavel: '', dataRetirada: today, dataVolta: today
             });
 
             React.useEffect(() => {
@@ -148,7 +146,7 @@
                         const currentProd = products.find(p => p.firebaseId === item.firebaseId);
                         await ref.update({ currentQuantity: Math.max(0, (currentProd.currentQuantity || 0) - 1) });
                     }
-                    setCart([]); setOrderData({ projeto: '', trabalho: '', responsavel: '', dataRetirada: today, dataVolta: today, imagemRef: '' });
+                    setCart([]); setOrderData({ projeto: '', responsavel: '', dataRetirada: today, dataVolta: today });
                     setView('historico');
                 } catch (e) { alert('Erro ao salvar.'); }
             };
@@ -156,59 +154,82 @@
             const generatePDF = async (order) => {
                 setIsGeneratingPdf(true);
                 const pdf = new jsPDF('p', 'mm', 'a4');
-                const margin = 15;
+                const margin = 20;
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
-                let yPos = 20;
-
-                const checkNewPage = (needed) => {
-                    if (yPos + needed > pageHeight - 20) { pdf.addPage(); yPos = 20; drawHeader(); }
-                };
+                let yPos = 25;
 
                 const drawHeader = () => {
                     pdf.setFont('helvetica', 'bold');
-                    pdf.setFontSize(24);
+                    pdf.setFontSize(26);
                     pdf.setTextColor(0);
                     pdf.text("PIRRONCELLI", margin, yPos);
-                    pdf.setFontSize(8);
-                    pdf.setTextColor(150);
-                    pdf.text("GESTÃO DE EQUIPAMENTOS", margin, yPos + 5);
+                    pdf.setFontSize(9);
+                    pdf.setTextColor(100);
+                    pdf.text("CONTROLE DE SAÍDA DE EQUIPAMENTOS", margin, yPos + 6);
                     yPos += 15;
-                    pdf.setDrawColor(230);
+                    pdf.setDrawColor(200);
                     pdf.line(margin, yPos, pageWidth - margin, yPos);
-                    yPos += 10;
+                    yPos += 12;
+                };
+
+                const checkNewPage = (needed) => {
+                    if (yPos + needed > pageHeight - 50) { 
+                        pdf.addPage(); 
+                        yPos = 25; 
+                        drawHeader(); 
+                    }
                 };
 
                 drawHeader();
                 
-                // Info Section
-                pdf.setFillColor(245, 245, 245);
+                // Info Box
+                pdf.setFillColor(248, 248, 248);
                 pdf.rect(margin, yPos, pageWidth - (margin * 2), 35, 'F');
-                pdf.setFontSize(10);
-                pdf.setTextColor(0);
-                pdf.text(`PROJETO: ${order.projeto}`, margin + 5, yPos + 10);
-                pdf.text(`RESPONSÁVEL: ${order.responsavel}`, margin + 5, yPos + 18);
-                pdf.text(`DATA SAÍDA: ${formatDate(order.dataRetirada)} | VOLTA: ${formatDate(order.dataVolta)}`, margin + 5, yPos + 26);
-                yPos += 45;
+                pdf.setFontSize(11);
+                pdf.setTextColor(40);
+                pdf.text(`PROJETO: ${order.projeto.toUpperCase()}`, margin + 6, yPos + 10);
+                pdf.text(`RESPONSÁVEL: ${order.responsavel.toUpperCase()}`, margin + 6, yPos + 18);
+                pdf.text(`DATA SAÍDA: ${formatDate(order.dataRetirada)}   |   VOLTA PREVISTA: ${formatDate(order.dataVolta)}`, margin + 6, yPos + 26);
+                yPos += 48;
 
-                // Items Section
+                // Items
                 pdf.setFont('helvetica', 'bold');
-                pdf.text("ITENS DA ORDEM", margin, yPos);
-                yPos += 5;
+                pdf.setFontSize(12);
+                pdf.text("LISTA DE EQUIPAMENTOS", margin, yPos);
+                yPos += 6;
+                pdf.setDrawColor(0);
                 pdf.line(margin, yPos, pageWidth - margin, yPos);
-                yPos += 8;
+                yPos += 10;
 
                 const counts = {};
                 order.items.forEach(it => { counts[it.name] = (counts[it.name] || 0) + 1; });
 
                 pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(10);
                 Object.entries(counts).forEach(([name, count]) => {
                     checkNewPage(10);
-                    pdf.text(`${count}x ${name}`, margin, yPos);
+                    pdf.text(`${count}x`, margin, yPos);
+                    pdf.text(`${name}`, margin + 12, yPos);
                     yPos += 8;
                 });
 
-                pdf.save(`PIRRONCELLI_${order.projeto}.pdf`);
+                // Assinatura (Sempre ao final da lista ou nova página)
+                checkNewPage(40);
+                yPos += 15;
+                pdf.setDrawColor(150);
+                pdf.line(margin + 30, yPos, pageWidth - margin - 30, yPos);
+                yPos += 6;
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(10);
+                pdf.text(order.responsavel.toUpperCase(), pageWidth / 2, yPos, { align: 'center' });
+                yPos += 4;
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(8);
+                pdf.setTextColor(120);
+                pdf.text("ASSINATURA DO RESPONSÁVEL", pageWidth / 2, yPos, { align: 'center' });
+
+                pdf.save(`PIRRONCELLI_${order.projeto.replace(/\s+/g, '_')}.pdf`);
                 setIsGeneratingPdf(false);
             };
 
@@ -218,7 +239,6 @@
 
             return (
                 <div className="flex flex-col min-h-screen">
-                    {/* Header Desktop */}
                     <header className="hidden md:flex items-center justify-between p-6 glass-panel sticky top-0 z-50">
                         <Icons.Logo />
                         <div className="flex bg-white/5 p-1 rounded-2xl border border-white/5">
@@ -230,7 +250,6 @@
                         </div>
                     </header>
 
-                    {/* Logo Mobile */}
                     <div className="md:hidden flex justify-center py-6 border-b border-white/5">
                         <Icons.Logo />
                     </div>
@@ -238,7 +257,6 @@
                     <main className="p-4 md:p-8 max-w-7xl mx-auto w-full main-content">
                         {view === 'retirada' && (
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-12">
-                                {/* Lista de Seleção */}
                                 <div className="flex flex-col space-y-4">
                                     <div className="relative group">
                                         <div className="absolute left-4 top-1/2 -translate-y-1/2 opacity-20"><Icons.Search /></div>
@@ -250,7 +268,7 @@
                                             onChange={e => setSearch(e.target.value)}
                                         />
                                     </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-1 gap-2 max-h-[400px] md:max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar pr-2">
+                                    <div className="grid grid-cols-1 gap-2 max-h-[400px] md:max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar pr-2">
                                         {products.filter(p => p.name.toLowerCase().includes(search.toLowerCase())).map(p => {
                                             const av = (p.currentQuantity || 0) - getCartCount(p.firebaseId);
                                             return (
@@ -271,7 +289,6 @@
                                     </div>
                                 </div>
 
-                                {/* Carrinho e Dados */}
                                 <div className="flex flex-col space-y-6 sticky-form top-24 h-fit">
                                     <div className="bg-zinc-900/80 border border-white/5 rounded-[2.5rem] p-6 md:p-8 space-y-6 shadow-xl">
                                         <div className="space-y-4">
@@ -282,24 +299,30 @@
                                                 onChange={e => setOrderData({...orderData, projeto: e.target.value})}
                                             />
                                             <input 
-                                                placeholder="RESPONSÁVEL PELA RETIRADA" 
+                                                placeholder="QUEM ESTÁ RETIRANDO?" 
                                                 className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-[#c2ff59]"
                                                 value={orderData.responsavel}
                                                 onChange={e => setOrderData({...orderData, responsavel: e.target.value})}
                                             />
                                             <div className="grid grid-cols-2 gap-4">
-                                                <input type="date" className="bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black outline-none" value={orderData.dataRetirada} onChange={e => setOrderData({...orderData, dataRetirada: e.target.value})} />
-                                                <input type="date" className="bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black outline-none" value={orderData.dataVolta} onChange={e => setOrderData({...orderData, dataVolta: e.target.value})} />
+                                                <div>
+                                                    <label className="text-[7px] font-black opacity-30 uppercase ml-2 mb-1 block">Saída</label>
+                                                    <input type="date" className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black outline-none" value={orderData.dataRetirada} onChange={e => setOrderData({...orderData, dataRetirada: e.target.value})} />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[7px] font-black opacity-30 uppercase ml-2 mb-1 block">Previsão Volta</label>
+                                                    <input type="date" className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl text-[10px] font-black outline-none" value={orderData.dataVolta} onChange={e => setOrderData({...orderData, dataVolta: e.target.value})} />
+                                                </div>
                                             </div>
                                         </div>
 
                                         <div className="pt-4 border-t border-white/5 max-h-[150px] overflow-y-auto custom-scrollbar">
-                                            <div className="text-[9px] font-black opacity-30 mb-4 uppercase">Carrinho ({cart.length})</div>
+                                            <div className="text-[9px] font-black opacity-30 mb-4 uppercase">Itens Selecionados ({cart.length})</div>
                                             <div className="space-y-2">
                                                 {cart.map((c, i) => (
                                                     <div key={i} className="flex justify-between items-center bg-black/20 p-3 rounded-xl">
                                                         <span className="text-[9px] font-black uppercase truncate mr-4">{c.name}</span>
-                                                        <button onClick={() => setCart(cart.filter((_, idx) => idx !== i))} className="text-red-500/40 hover:text-red-500"><Icons.Trash /></button>
+                                                        <button onClick={() => setCart(cart.filter((_, idx) => idx !== i))} className="text-red-500/40 hover:text-red-500 p-1"><Icons.Trash /></button>
                                                     </div>
                                                 ))}
                                             </div>
@@ -307,10 +330,10 @@
 
                                         <button 
                                             onClick={handleFinalize}
-                                            disabled={!cart.length || !orderData.projeto}
+                                            disabled={!cart.length || !orderData.projeto || !orderData.responsavel}
                                             className="w-full bg-[#c2ff59] text-black py-4 rounded-2xl font-black uppercase text-[11px] shadow-lg shadow-[#c2ff59]/10 active:scale-95 transition-all disabled:opacity-20"
                                         >
-                                            Finalizar Retirada
+                                            Confirmar Saída
                                         </button>
                                     </div>
                                 </div>
@@ -320,32 +343,32 @@
                         {view === 'historico' && (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {history.map(h => (
-                                    <div key={h.firebaseId} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-white/5 flex flex-col justify-between hover:bg-zinc-900 transition-all">
+                                    <div key={h.firebaseId} className="bg-zinc-900/60 p-6 rounded-[2rem] border border-white/5 flex flex-col justify-between hover:bg-zinc-900 transition-all group">
                                         <div>
                                             <div className="flex justify-between items-start mb-4">
-                                                <div className="font-black text-[#c2ff59] uppercase text-sm leading-tight">{h.projeto}</div>
+                                                <div className="font-black text-[#c2ff59] uppercase text-sm leading-tight group-hover:tracking-wider transition-all">{h.projeto}</div>
                                                 <div className="text-[8px] font-black opacity-30">{h.dataRegistro}</div>
                                             </div>
                                             <div className="text-[9px] font-bold opacity-50 uppercase mb-4 space-y-1">
-                                                <div>POR: {h.responsavel}</div>
+                                                <div className="flex items-center gap-2">RESP: {h.responsavel}</div>
                                                 <div>VOLTA: {formatDate(h.dataVolta)}</div>
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={() => generatePDF(h)} className="flex-1 bg-white/5 p-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2">
-                                                <Icons.Download /> PDF
+                                            <button onClick={() => generatePDF(h)} className="flex-1 bg-white/5 p-3 rounded-xl text-[9px] font-black uppercase flex items-center justify-center gap-2 hover:bg-white/10 transition-colors">
+                                                <Icons.Download /> Gerar PDF
                                             </button>
                                             {!h.concluido && (
                                                 <button 
                                                     onClick={async () => {
-                                                        if(!confirm('Baixa no sistema?')) return;
+                                                        if(!confirm('Deseja confirmar o retorno desses equipamentos ao estoque?')) return;
                                                         await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('history').doc(h.firebaseId).update({ concluido: true });
                                                         for(const item of h.items) {
                                                             const p = products.find(prod => prod.code === item.code);
                                                             if(p) await db.collection('artifacts').doc(appId).collection('public').doc('data').collection('inventory').doc(p.firebaseId).update({ currentQuantity: (p.currentQuantity || 0) + 1 });
                                                         }
                                                     }}
-                                                    className="flex-1 bg-[#c2ff59] text-black p-3 rounded-xl text-[9px] font-black uppercase"
+                                                    className="flex-1 bg-[#c2ff59] text-black p-3 rounded-xl text-[9px] font-black uppercase hover:brightness-110 transition-all"
                                                 >
                                                     Dar Baixa
                                                 </button>
@@ -371,11 +394,10 @@
                         )}
                     </main>
 
-                    {/* Bottom Navigation Mobile */}
                     <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-panel border-t border-white/5 px-8 py-4 flex justify-between items-center z-[100]">
                         <button onClick={() => setView('retirada')} className={`flex flex-col items-center gap-1 ${view === 'retirada' ? 'active-tab-mobile' : 'opacity-30'}`}>
                             <Icons.Plus />
-                            <span className="text-[8px] font-black uppercase">Nova</span>
+                            <span className="text-[8px] font-black uppercase">Saída</span>
                         </button>
                         <button onClick={() => setView('historico')} className={`flex flex-col items-center gap-1 ${view === 'historico' ? 'active-tab-mobile' : 'opacity-30'}`}>
                             <Icons.History />
@@ -383,7 +405,7 @@
                         </button>
                         <button onClick={() => setView('estoque')} className={`flex flex-col items-center gap-1 ${view === 'estoque' ? 'active-tab-mobile' : 'opacity-30'}`}>
                             <Icons.Box />
-                            <span className="text-[8px] font-black uppercase">Caixa</span>
+                            <span className="text-[8px] font-black uppercase">Saldo</span>
                         </button>
                     </nav>
                 </div>
